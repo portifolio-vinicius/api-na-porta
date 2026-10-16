@@ -2,14 +2,16 @@
 
 Nginx, escala Swarm e scripts de permissões estão implementados; veja [infraestrutura e acessos](16-infraestrutura-e-acessos.md).
 
-Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Há Compose do banco e scripts PostgreSQL. Ambiente completo com API, criação automática de branches e replicação continuam futuros; detalhes no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
+Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). O fluxo Git cria um worktree por funcionalidade e permite várias implementações ativas quando os arquivos não se sobrepõem; veja [06 — Fluxo de desenvolvimento](06-fluxo-de-desenvolvimento.md). O ambiente completo da API e replicação continuam futuros; detalhes do banco no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações e das automações repetidas. Scripts validam pré-requisitos, não imprimem segredos e propagam falhas.
 
 ## Catálogo de comandos e estado
 
 | Comando | Script / responsabilidade | Estado |
 | --- | --- | --- |
 | `make help` | Listar alvos e variáveis aceitas | Implementado; pré-requisitos no documento 13 |
-| `make startTask TYPE=feature TICKET=124 NAME=filtros-pedidos` | `scripts/git/start-task.sh`: branch de develop e worktree isolado | Planejado; alvo/script ausentes |
+| `make startTask TYPE=feature TICKET=124 NAME=filtros-pedidos FILES=backend/src/features/orders,docs/05-api.md` | `scripts/git/start-task.sh`: criar branch nomeada, worktree e registro da tarefa | Implementado; parte de `origin/develop`, registra arquivos e aceite |
+| `make taskActivate TICKET=124` | `scripts/git/task-flow.sh activate`: reservar os arquivos da tarefa e permitir outras tarefas ativas com caminhos distintos | Implementado; exige árvore limpa, branch sincronizada com `origin/develop` e arquivos livres |
+| `make taskRelease TICKET=124` / `make taskStatus` | `scripts/git/task-flow.sh`: consultar as tarefas ativas e liberar uma sem encerrar as outras | Implementado; a reserva persiste durante a revisão e o release exige commit ancestral de `origin/develop` |
 | `make validateFlow TARGET=develop` | `scripts/git/validate-flow.sh`: conferir origem, destino e estado Git | Implementado; pré-requisitos no documento 13 |
 | `make up` | `scripts/dev/up.sh`: validar ambiente, subir banco, migrations, seed, volume de cache e API | Planejado; alvo/script ausentes |
 | `make down` | `scripts/dev/down.sh`: parar preservando volumes | Planejado; alvo/script ausentes |
@@ -43,7 +45,7 @@ Operações adicionais implementadas:
 
 Configuração, confirmações e limites ficam no documento 15. Replicação, PITR e ambiente completo da API permanecem planejados.
 
-Os alvos de coordenação aguardam todos os processos iniciados, coletam resultados e propagam falhas. Paralelizar somente jobs independentes com recursos isolados; migrations e seed respeitam ordem. Não criar um alvo que faça merge sem revisão ou pule os gates. Não existe alvo/teste de frontend no escopo atual.
+Os alvos de coordenação aguardam todos os processos iniciados, coletam resultados e propagam falhas. Paralelizar jobs de validação independentes e funcionalidades com arquivos distintos, cada uma no próprio worktree, conforme o documento 06. Migrations e seed respeitam ordem. Nenhum alvo faz merge sem revisão ou pula gates. Não existe alvo/teste de frontend no escopo atual.
 
 ## Docker Compose proposto
 
