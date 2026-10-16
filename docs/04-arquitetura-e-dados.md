@@ -2,7 +2,7 @@
 
 ## Separação e feature folders
 
-Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação, rotas de pedidos e cache local de listagens estão implementados; cache dedicado em Compose e métricas continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
+Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação, rotas de pedidos e cache local de listagens estão implementados; métricas continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
 
 ```text
 backend/
@@ -20,7 +20,7 @@ backend/
     ordersTypes.ts
     ordersDto.ts
   src/features/auth/           Login/JWT implementados
-  src/shared/cache/            Interface e adapter local em arquivos; métricas pendentes
+  src/shared/cache/            Interface e adapter local em arquivos
   src/shared/config/           appConfig.ts implementado
   src/shared/database/         DatabaseModule e PrismaService implementados
   src/shared/http/             filtro de erros sanitizado implementado
@@ -81,7 +81,7 @@ Na camada HTTP, usar `BadRequestException`, `UnauthorizedException`, `ForbiddenE
 
 ## Cache em arquivos
 
-Contrato assíncrono `CacheInterface`: leitura, escrita com TTL, remoção e invalidação de namespace. Adapter inicial `fileCacheAdapter.ts` usa filesystem, isolado atrás da interface e configurado por injeção. Listagens autenticadas de pedidos usam o adapter com TTL de 60 segundos; Compose ainda não monta volume dedicado em `CACHE_DIRECTORY`. Cache é descartável e a fonte de verdade continua sendo o banco.
+Contrato assíncrono `CacheInterface`: leitura, escrita com TTL, remoção e invalidação de namespace. Adapter inicial `fileCacheAdapter.ts` usa filesystem, isolado atrás da interface e configurado por injeção. Listagens autenticadas de pedidos usam o adapter com TTL de 60 segundos; o Compose local monta volume dedicado em `CACHE_DIRECTORY`. Cache é descartável e a fonte de verdade continua sendo o banco.
 
 Proposta de uso inicial: consultas de pedidos autenticadas, com chave derivada de namespace, versão dos dados, filtros/paginação normalizados e contexto de autorização. Nunca cachear JWT, senha, credenciais ou respostas 401/403. Valores contêm apenas DTOs públicos. Limitar TTL, tamanho por entrada, ocupação total e concorrência; arquivos com permissões restritas, nomes derivados por hash sem entrada de usuário em caminhos, escrita temporária seguida de rename atômico no mesmo volume e limpeza assíncrona limitada. Arquivo expirado/corrompido ou cache indisponível resulta em miss e consulta ao banco; não ocultar erros do banco.
 
@@ -116,7 +116,7 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
-Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login, rotas de pedidos e cache local de listagens existem; Compose completo, métricas e integração HTTP continuam pendentes.
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login, rotas de pedidos e cache local de listagens existem; métricas e integração HTTP continuam pendentes.
 
 
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.

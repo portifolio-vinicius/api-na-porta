@@ -24,7 +24,7 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 - Migration existente `20261016000100_initial` e executor nativo de `make migrate`.
 - Contrato HTTP em `docs/05-api.md` e regras de infraestrutura em `docs/14-infraestrutura-e-acessos.md`.
 - Base existente: migration inicial, seed de pedido, Compose PostgreSQL, executor/backup/restore e Swarm em `develop`.
-- Sequência no branch: (1) bootstrap/Prisma/Docker, commit `a52a25e`; (2) login JWT e usuário fictício, commit `a95b948`; (3) criar/listar/detalhar pedidos com filtros e paginação, commit `45b0343`; (4) editar e excluir logicamente, commit `161f81e`; (5) cache local versionado de listagens; (6) Compose completo e instrumentação; (7) integração HTTP exigida antes do merge.
+- Sequência no branch: (1) bootstrap/Prisma/Docker, commit `a52a25e`; (2) login JWT e usuário fictício, commit `a95b948`; (3) criar/listar/detalhar pedidos com filtros e paginação, commit `45b0343`; (4) editar e excluir logicamente, commit `161f81e`; (5) cache local versionado de listagens, commit `a7065b0`; (6) Compose local e roles de desenvolvimento; (7) métricas e integração HTTP exigidas antes do merge.
 
 ## Aceite
 
@@ -41,9 +41,11 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 - **Bloco 2 concluído:** login JWT/Argon2id, limiter compartilhado, migration e seed de usuário (`a95b948`).
 - **Bloco 3 concluído:** POST, GET lista com filtros/paginação e GET detalhe; `make check` aprovado; commit `45b0343`.
 - **Bloco 4 concluído:** PATCH com validação de regras e DELETE lógico; migration 003 preserva itens substituídos; commit `161f81e`.
-- **Bloco 5 implementado:** interface de cache e adapter em arquivos com TTL/limites; listagem versionada por `cache_versions`, falhas de filesystem viram miss. Validação estática em execução.
+- **Bloco 5 concluído:** interface de cache e adapter em arquivos com TTL/limites; listagem versionada por `cache_versions`, falhas de filesystem viram miss; commit `a7065b0`.
+- **Bloco 6 implementado:** Compose de desenvolvimento e comandos `make up/down/logs`, com roles de API e migration separadas; bash -n, `make help`, `make check`, audit, `make docsCheck` e `git diff --check` aprovados.
 - **Bloco 2 validado:** `make check`, `npm --prefix backend audit` (0 vulnerabilidades), `make docsCheck` (25 arquivos, 0 erros), `git diff --check`.
 - **Não executado:** integração HTTP, `infraCheck`, segurança completa e build/scan da imagem do backend.
+- **Compose:** `make up` não executado; execução em ambiente Docker e validação de permissões reais ainda pendentes.
 - O gate `make integration` permanece reprovado até existir a suíte HTTP obrigatória e todos os cenários passarem.
 - **Scripts de criação de branch/worktree:** `make startTask` / `scripts/git/start-task.sh` ainda ausentes; branch criada manualmente a partir de `origin/develop`.
 - **PR:** pendente.
@@ -56,3 +58,4 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 - 2026-10-16: bloco 3 implementa criação, listagem, filtros e detalhe de pedidos; checks de build/typecheck passaram. Integração HTTP continua pendente.
 - 2026-10-16: bloco 4 implementa edição, transições de estado e exclusão lógica de pedido/itens com migration aditiva. Integração HTTP, banco real e infraCheck não executados.
 - 2026-10-16: bloco 5 implementa cache local de listagens e invalidação por versão transacional no PostgreSQL; sem medições HTTP e sem integração executada.
+- 2026-10-16: bloco 6 adiciona composição local, bootstrap restrito de roles e comandos de ambiente. Execução real do Compose ainda não feita.

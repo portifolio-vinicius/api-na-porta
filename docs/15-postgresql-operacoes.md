@@ -27,6 +27,8 @@ make dbDown
 
 O projeto Compose deriva de `PGDATABASE`, isolando volumes por banco. O nome padrão do container é `naporta-<PGDATABASE com hífens>-db`; `DB_CONTAINER` permite nome explícito. `dbDown` preserva o volume. Repetir `dbUp` reutiliza os dados; credenciais e banco de inicialização só são aplicados pelo entrypoint a um volume vazio. O Compose atual sobe somente o banco, sem API ou réplica.
 
+`make up` acrescenta o bootstrap local de `naporta_migrator` e `naporta_app`, executa migrations/seed usando a role migrator e aplica `grants.sql` antes de iniciar a API. A senha de administrador inicial do container, `MIGRATOR_PASSWORD` e `APP_PASSWORD` são distintas; os DSNs da API usam o hostname de Compose `db`, enquanto os scripts no host usam `PGHOST`/`PGPORT`. Esse bootstrap é restrito a `local`/`demo` e não substitui a configuração de roles/secrets do Swarm.
+
 Os scripts exigem conexão explícita, validam ambiente/nome do banco e mantêm senhas fora dos argumentos e logs. Esses checks validam a configuração informada; o responsável também mantém credenciais e permissões separadas por ambiente. Produção fica fora dos destinos permitidos por essas rotinas.
 
 ## Comandos
