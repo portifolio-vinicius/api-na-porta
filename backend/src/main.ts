@@ -8,9 +8,12 @@ import { HttpErrorFilter } from './shared/http/httpErrorFilter.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadAppConfig(process.env);
-  const app = await NestFactory.create(createAppModule(config), { logger: ['error', 'warn'] });
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  const app = await NestFactory.create(createAppModule(config), { logger: ['error', 'warn'], bodyParser: false });
+  app.getHttpAdapter().getInstance().set('trust proxy', config.trustProxy ? 1 : false);
   app.use(json({ limit: '1mb' }));
+  if (config.corsOrigins.length > 0) {
+    app.enableCors({ origin: [...config.corsOrigins], methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-ID'] });
+  }
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'health/ready', method: RequestMethod.GET }],
   });

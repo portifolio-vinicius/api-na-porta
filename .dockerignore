@@ -11,3 +11,6 @@ artifacts
 .env.*
 !.env.example
 !.env.*.example
+
+**/src/generated
+**/__pycache__

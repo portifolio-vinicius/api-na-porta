@@ -24,7 +24,7 @@ async function seedDemoUser(): Promise<void> {
 
   const parsedUrl = new URL(databaseUrl);
   const expectedDatabase = `naporta_${environment}`;
-  if (parsedUrl.username !== 'naporta_migrator' || parsedUrl.pathname !== `/${expectedDatabase}`) {
+  if (!['postgres:', 'postgresql:'].includes(parsedUrl.protocol) || parsedUrl.username !== 'naporta_migrator' || !new RegExp(`^/${expectedDatabase}(?:_[a-z0-9]+)*$`).test(parsedUrl.pathname)) {
     throw new Error('DATABASE_URL deve apontar para o banco de demonstração usando naporta_migrator.');
   }
 

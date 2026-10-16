@@ -40,4 +40,7 @@ ALTER ROLE naporta_app SET search_path = public, pg_catalog;
 ALTER ROLE naporta_app SET statement_timeout = '5s';
 ALTER ROLE naporta_app SET lock_timeout = '2s';
 ALTER ROLE naporta_app SET idle_in_transaction_session_timeout = '10s';
+SELECT 'CREATE ROLE naporta_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'naporta_reader')
+\gexec
 COMMIT;

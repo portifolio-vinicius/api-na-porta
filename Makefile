@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 TARGET ?= develop
 export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR APP_PASSWORD MIGRATOR_PASSWORD API_DATABASE_URL MIGRATOR_API_URL JWT_SECRET JWT_ISSUER JWT_AUDIENCE JWT_TTL_SECONDS DEMO_USER_EMAIL DEMO_USER_PASSWORD API_HOST_PORT
-export API_REPLICAS STACK_NAME DB_CONTAINER DB_ACCESS_ACTION
+export API_REPLICAS STACK_NAME DB_CONTAINER DB_ACCESS_ACTION REPLICATION_PASSWORD CORS_ORIGINS CACHE_DRIVER
 .PHONY: infraValidate swarmDeploy scale dbAccess infraCheck
 infraValidate:
 	@bash scripts/infra/validate.sh
@@ -18,6 +18,7 @@ infraCheck:
 pipelineCheck:
 	@python3 scripts/ci/validate.py
 help:
+	@printf '%s\n' 'replicaInit replicaStatus replicaDown replicaIntegration; REPLICATION_PASSWORD no ambiente privado'
 	@printf '%s\n' 'infraCheck infraValidate swarmDeploy scale dbAccess' 'API_REPLICAS=2; STACK_NAME=naporta; DB_ACCESS_ACTION=roles|grants; DB_CONTAINER=<container>'
 	@printf '%s\n' 'up down logs SERVICE=api|db; ENV=local|demo PGHOST PGPORT PGUSER=postgres PGPASSWORD PGDATABASE APP_PASSWORD MIGRATOR_PASSWORD API_DATABASE_URL MIGRATOR_API_URL JWT_SECRET JWT_ISSUER JWT_AUDIENCE DEMO_USER_EMAIL DEMO_USER_PASSWORD'
 	@printf '%s\n' 'dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration' 'pipelineCheck check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow' 'TARGET=develop|master; METRICS_DIR=artifacts/performance/current'
@@ -67,3 +68,13 @@ dbUp:
 	@bash scripts/db/up.sh
 dbDown:
 	@bash scripts/db/down.sh
+
+.PHONY: replicaInit replicaStatus replicaDown replicaIntegration
+replicaInit:
+	@python3 scripts/db/replication.py init
+replicaStatus:
+	@python3 scripts/db/replication.py status
+replicaDown:
+	@python3 scripts/db/replication.py down
+replicaIntegration:
+	@python3 backend/test/integration/postgresReplication.py

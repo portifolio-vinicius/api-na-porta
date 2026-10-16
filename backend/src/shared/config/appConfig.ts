@@ -8,6 +8,9 @@ export interface AppConfig {
   readonly jwtAudience: string;
   readonly jwtTtlSeconds: number;
   readonly cacheDirectory: string;
+  readonly corsOrigins: readonly string[];
+  readonly trustProxy: boolean;
+  readonly cacheDriver: 'file' | 'disabled';
 }
 
 export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
@@ -19,6 +22,22 @@ export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
   const jwtAudience = environment.JWT_AUDIENCE;
   const jwtTtlSeconds = Number(environment.JWT_TTL_SECONDS ?? '900');
   const cacheDirectory = environment.CACHE_DIRECTORY ?? '/tmp/naporta-cache';
+  const corsOrigins = (environment.CORS_ORIGINS ?? '').split(',').map((origin) => origin.trim()).filter(Boolean);
+  const trustProxyValue = environment.TRUST_PROXY ?? 'false';
+  const cacheDriver = environment.CACHE_DRIVER ?? 'file';
+  if (cacheDriver !== 'file' && cacheDriver !== 'disabled') {
+    throw new Error('Configuração inválida: CACHE_DRIVER deve ser file ou disabled.');
+  }
+  if (!['true', 'false'].includes(trustProxyValue)) {
+    throw new Error('Configuração inválida: TRUST_PROXY deve ser true ou false.');
+  }
+  for (const origin of corsOrigins) {
+    let url: URL;
+    try { url = new URL(origin); } catch { throw new Error('Configuração inválida: CORS_ORIGINS exige origens HTTP(S).'); }
+    if (!['https:', 'http:'].includes(url.protocol) || url.origin !== origin) {
+      throw new Error('Configuração inválida: CORS_ORIGINS exige origens HTTP(S), sem caminhos.');
+    }
+  }
 
   if (!Number.isInteger(apiPort) || apiPort < 1 || apiPort > 65535) {
     throw new Error('Configuração inválida: API_PORT deve ser uma porta entre 1 e 65535.');
@@ -57,5 +76,5 @@ export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
     throw new Error('Configuração inválida: CACHE_DIRECTORY deve ser um caminho absoluto.');
   }
 
-  return { apiPort, databaseUrl, jwtSecret, jwtIssuer, jwtAudience, jwtTtlSeconds, cacheDirectory };
+  return { apiPort, databaseUrl, jwtSecret, jwtIssuer, jwtAudience, jwtTtlSeconds, cacheDirectory, corsOrigins, trustProxy: trustProxyValue === 'true', cacheDriver };
 }

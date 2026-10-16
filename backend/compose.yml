@@ -11,6 +11,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ISSUER: ${JWT_ISSUER:-}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      TRUST_PROXY: 'false'
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-900}
       CACHE_DIRECTORY: /var/cache/naporta
     ports:
