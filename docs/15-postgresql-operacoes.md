@@ -58,11 +58,11 @@ O seed não cria usuário de login nem senha. Ele mantém registros existentes, 
 
 ## Backup, reversão e recuperação
 
-O backup mantém um lock de schema compartilhado pelas operações deste conjunto enquanto `pg_dump` exporta seu snapshot consistente. O dump e o manifesto são publicados sem sobrescrita, com permissões 0600. O manifesto contém origem técnica, histórico de migrations, tamanho e SHA-256. Falha interrompe a operação e remove somente os arquivos temporários criados por ela. Outros clientes que executam DDL sem o mesmo lock ficam fora dessa coordenação; mudanças de schema devem passar pelo executor.
+O backup mantém um lock de schema compartilhado pelas operações deste conjunto enquanto `pg_dump` exporta seu snapshot consistente. O dump e o manifesto são publicados sem sobrescrita, com permissões 0600. O manifesto contém origem técnica e transporte (container ou cliente nativo), histórico de migrations, tamanho e SHA-256. Falha interrompe a operação e remove somente os arquivos temporários criados por ela. Outros clientes que executam DDL sem o mesmo lock ficam fora dessa coordenação; mudanças de schema devem passar pelo executor.
 
 Os arquivos `.dump` e `.dump.json` são privados e ignorados pelo Git. Contêm dados do banco; os artefatos de CI publicados incluem somente resultados técnicos sanitizados. O formato custom e sua restauração seguem os [clientes oficiais PostgreSQL](https://www.postgresql.org/docs/18/backup-dump.html).
 
-Para rollback:
+Para rollback, criar um backup do estado atual. O exemplo da migration inicial só conclui com `users` e `orders` vazios:
 
 ```sh
 make backup BACKUP_FILE=artifacts/backups/antes-reversao.dump
@@ -81,4 +81,6 @@ O backup atual cobre um único banco. Roles globais, tablespaces, PITR/WAL, crip
 
 A suíte fica em [backend/test/integration/databaseOperations.py](../backend/test/integration/databaseOperations.py), como integração de infraestrutura do backend. `make integration` executa essa suíte antes de validar os pré-requisitos da API. O GitHub Actions publica somente `artifacts/database-integration.json`, sem dumps, credenciais ou corpos HTTP. A ausência do backend continua reprovando o job completo e o gate.
 
-Casos exercitados: criação/repetição de schema, consulta de histórico, seed idempotente, preservação de dados externos, alteração incremental e reversão com dados preservados, recusa de plano destrutivo, reaplicação, checksum de migration alterada, DDL parcialmente executado, backup custom real e permissões, backup incompatível/corrompido, restauração de dados/estrutura/precisão/relações, zeros iniciais, destino ocupado, confirmações/ambientes inválidos, serialização concorrente, falha de conexão, reversão inicial vazia e persistência após parada/reinício do Compose. A execução local aprovou 57 verificações PostgreSQL. `make pipelineCheck` aprovou 67 verificações das esteiras; são conjuntos diferentes. O resultado JSON informa os cenários efetivamente aprovados.
+Casos exercitados: criação/repetição de schema, consulta de histórico, seed idempotente, preservação de dados externos, alteração incremental e reversão com dados preservados, recusa de plano destrutivo, reaplicação, checksum de migration alterada, DDL parcialmente executado, backup custom real e permissões, backup incompatível/corrompido, restauração de dados/estrutura/precisão/relações, zeros iniciais, destino ocupado, confirmações/ambientes inválidos, serialização concorrente, falha de conexão, reversão inicial vazia e persistência após parada/reinício do Compose. A execução local aprovou 58 verificações PostgreSQL. `make pipelineCheck` aprovou 67 verificações das esteiras; são conjuntos diferentes. O resultado JSON informa os cenários efetivamente aprovados.
+
+A [primeira execução remota dessas operações](https://github.com/portifolio-vinicius/api-na-porta/actions/runs/38937722587) aprovou 57 casos PostgreSQL e 67 checks das esteiras. A revisão local posterior acrescentou a rejeição de backup de outro transporte, chegando a 58 casos PostgreSQL. O job completo continuou reprovado por ausência do backend HTTP.

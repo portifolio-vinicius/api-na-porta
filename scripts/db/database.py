@@ -91,7 +91,9 @@ class Postgres:
             fail('DB_CONFIRM deve ser exatamente o PGDATABASE do destino.')
 
     def identity(self):
-        return {key: self.env[key] for key in ('PGHOST', 'PGPORT', 'PGDATABASE')}
+        identity = {key: self.env[key] for key in ('PGHOST', 'PGPORT', 'PGDATABASE')}
+        identity['transport'] = self.container or 'native'
+        return identity
 
     @contextmanager
     def schema_lock(self):

@@ -138,6 +138,10 @@ def main():
             metadata_path.write_text('[]')
             operation('restore','manifesto malformado rejeitado sem traceback',success=False,custom=destination)
             metadata_path.write_text(metadata_original)
+            other_source=json.loads(metadata_original);other_source['source']['transport']='other-container'
+            metadata_path.write_text(json.dumps(other_source))
+            operation('rollback','backup de outro transporte bloqueado',success=False,custom=rollback)
+            metadata_path.write_text(metadata_original)
             operation('rollback','backup de outro destino bloqueado',success=False,custom=dict(rollback,PGDATABASE='naporta_test_restored',DB_CONFIRM='naporta_test_restored'))
             concurrency=Path(env['MIGRATIONS_DIR'])/'20261016000300_concurrent';concurrency.mkdir()
             (concurrency/'migration.sql').write_text('SELECT pg_sleep(1); CREATE TABLE public.concurrent_fixture(id integer);')
