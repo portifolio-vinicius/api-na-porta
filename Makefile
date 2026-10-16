@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 TARGET ?= develop
-export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR
+export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR TYPE TICKET NAME FILES WORKTREE_PATH
 export API_REPLICAS STACK_NAME DB_CONTAINER DB_ACCESS_ACTION
 .PHONY: infraValidate swarmDeploy scale dbAccess infraCheck
 infraValidate:
@@ -14,11 +14,12 @@ dbAccess:
 	@bash scripts/db/access.sh
 infraCheck:
 	@python3 scripts/infra/check.py
-.PHONY: pipelineCheck help check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow
+.PHONY: pipelineCheck help check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow startTask taskActivate taskRelease taskStatus
 pipelineCheck:
 	@python3 scripts/ci/validate.py
 help:
 	@printf '%s\n' 'infraCheck infraValidate swarmDeploy scale dbAccess' 'API_REPLICAS=2; STACK_NAME=naporta; DB_ACCESS_ACTION=roles|grants; DB_CONTAINER=<container>'
+	@printf '%s\n' 'startTask TYPE=feature|fix TICKET=123 NAME=descricao FILES=backend/src,docs/05-api.md [WORKTREE_PATH=../worktree]' 'taskActivate TICKET=123; taskRelease TICKET=123; taskStatus'
 	@printf '%s\n' 'dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration' 'pipelineCheck check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow' 'TARGET=develop|master; METRICS_DIR=artifacts/performance/current'
 check:
 	@bash scripts/check.sh
@@ -40,6 +41,14 @@ preMerge:
 	@bash scripts/git/pre-merge.sh
 validateFlow:
 	@bash scripts/git/validate-flow.sh
+startTask:
+	@bash scripts/git/start-task.sh
+taskActivate:
+	@bash scripts/git/task-flow.sh activate
+taskRelease:
+	@bash scripts/git/task-flow.sh release
+taskStatus:
+	@bash scripts/git/task-flow.sh status
 
 .PHONY: dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration
 migrate:

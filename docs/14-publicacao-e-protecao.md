@@ -54,3 +54,7 @@ Bloqueio de force push, exclusão e método de merge foi confirmado pela configu
 - Revisão humana prevista no processo, mas zero aprovações exigidas pelo ruleset atual.
 - Origem do PR e nomenclatura da tarefa conferidas pelo fluxo local; sem job remoto específico que imponha esses requisitos.
 - Teste de integração/merge aprovado e deploy pendentes; não flexibilizar o gate para aprovar sua ausência.
+
+## Atualização do fluxo serial de funcionalidades
+
+Na tarefa 005, o documento 06 foi alterado para permitir várias tarefas planejadas em branches/worktrees distintos e manter uma única implementação ativa por clone. `make startTask` cria a branch nomeada e o registro da tarefa; `make taskActivate` serializa a edição; `make taskRelease` mantém o bloqueio até confirmar que o commit entrou em `origin/develop`. A automação e sua validação estática foram adicionadas, mas a fila ainda não foi exercitada com múltiplas tarefas reais. O bloqueio é de protocolo local e não impede edição manual de uma branch inativa.

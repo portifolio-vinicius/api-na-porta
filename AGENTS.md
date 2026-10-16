@@ -5,8 +5,8 @@ A raiz define o processo comum. `backend/AGENTS.md` e `database/AGENTS.md` defin
 - A leitura começa em [docs/README.md](docs/README.md) e nos trechos relacionados à tarefa.
 - Requisitos e decisões têm fonte única em `docs/`. As instruções apontam para essas fontes.
 - Cada tarefa registra escopo, responsável, dependências, arquivos e evidências em `docs/tasks/<ticket>.md`.
-- O coordenador organiza dependências e revisa contratos compartilhados. Trabalho paralelo usa responsáveis e worktrees separados.
-- Cada arquivo compartilhado tem um responsável por tarefa.
+- O coordenador organiza a fila, dependências e contratos compartilhados. Várias tarefas podem ter branches/worktrees planejados, mas só uma funcionalidade pode estar em implementação por vez; use o bloqueio de tarefa do fluxo 06.
+- Cada arquivo compartilhado tem um único responsável por tarefa; não atribua o mesmo arquivo a funcionalidades em implementação distintas.
 - Features e correções partem de `origin/develop` atualizado, em worktree próprio.
 - Branches seguem `feature/<ticket>-<descricao>` ou `fix/<ticket>-<descricao>`.
 - Alterações entram em `develop` por PR. A promoção para `master` também usa PR.
