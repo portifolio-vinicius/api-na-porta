@@ -8,6 +8,7 @@ import type { AuthenticatedPrincipal } from './authTypes.js';
 
 interface JwtClaims {
   readonly sub?: unknown;
+  readonly exp?: unknown;
 }
 
 type AuthenticatedRequest = Request & { user?: AuthenticatedPrincipal };
@@ -30,10 +31,11 @@ export class JwtAuthGuard implements CanActivate {
     try {
       const claims = await this.jwt.verifyAsync<JwtClaims>(token, {
         secret: this.config.jwtSecret,
+        algorithms: ['HS256'],
         issuer: this.config.jwtIssuer,
         audience: this.config.jwtAudience,
       });
-      if (typeof claims.sub !== 'string' || !isUuid(claims.sub)) {
+      if (typeof claims.sub !== 'string' || !isUuid(claims.sub) || typeof claims.exp !== 'number' || !Number.isFinite(claims.exp)) {
         throw new UnauthorizedException('Token de acesso inválido');
       }
       request.user = { publicId: claims.sub };

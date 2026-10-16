@@ -51,9 +51,24 @@ export class OrdersUseCases {
     } catch {
       // Cache is optional; the repository remains the source of truth.
     }
-    if (cached) return cached;
+    if (cached && await this.repository.getCacheVersion() === version) {
+      try {
+        const rows = cached.rows.map((order) => ({
+          ...order,
+          createdAt: new Date(order.createdAt),
+          updatedAt: new Date(order.updatedAt),
+        }));
+        if (rows.every((order) => Number.isFinite(order.createdAt.getTime()) && Number.isFinite(order.updatedAt.getTime()))) {
+          return { rows, total: cached.total };
+        }
+      } catch {
+        // Invalid cache entries are treated as misses.
+      }
+    }
     const page = await this.repository.findActive(filters);
-    await this.cache.set('orders', key, page, 60).catch(() => undefined);
+    if (await this.repository.getCacheVersion() === version) {
+      await this.cache.set('orders', key, page, 60).catch(() => undefined);
+    }
     return page;
   }
 

@@ -4,6 +4,8 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsDefined,
+  IsObject,
   IsOptional,
   IsString,
   Length,
@@ -61,6 +63,7 @@ export class DeliveryAddressDto {
   @Length(3, 16)
   postalCode!: string;
 
+  @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
   @IsString()
   @Length(2, 2)
   country!: string;
@@ -87,10 +90,14 @@ export class CreateOrderDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   expectedDeliveryDate!: string;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => CustomerDto)
   customer!: CustomerDto;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => DeliveryAddressDto)
   deliveryAddress!: DeliveryAddressDto;
