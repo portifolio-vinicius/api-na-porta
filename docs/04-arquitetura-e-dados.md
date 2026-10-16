@@ -2,7 +2,7 @@
 
 ## Separação e feature folders
 
-Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma e autenticação estão implementados; pedidos e cache continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
+Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação e criação/consulta de pedidos estão implementados; edição, exclusão e cache continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
 
 ```text
 backend/
@@ -10,7 +10,7 @@ backend/
   src/appModule.ts           Módulo raiz e registro de dependências
   src/features/health/
     healthController.ts
-  src/features/orders/         Pendente
+  src/features/orders/         Criação/consulta/paginação/filtros implementados; PATCH/DELETE pendentes
     ordersModule.ts
     ordersController.ts
     ordersUseCases.ts
@@ -116,7 +116,7 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
-Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap e login da API existem; pedidos, cache e integração HTTP continuam pendentes.
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login e consultas/criação de pedidos existem; PATCH/DELETE, cache e integração HTTP continuam pendentes.
 
 
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.

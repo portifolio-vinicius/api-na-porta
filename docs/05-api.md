@@ -1,6 +1,6 @@
 # Contratos da API
 
-Prefixo `/api/v1`; JSON em UTF-8. Login e prontidão estão implementados. Rotas de pedidos permanecem propostas e exigirão JWT Bearer.
+Prefixo `/api/v1`; JSON em UTF-8. Login, prontidão e criação/consulta de pedidos estão implementados. Rotas de pedidos exigem JWT Bearer.
 
 ## Rotas
 
@@ -16,7 +16,7 @@ Prefixo `/api/v1`; JSON em UTF-8. Login e prontidão estão implementados. Rotas
 
 As rotas da tabela são relativas ao prefixo. Todas constam no [inventário de performance](performance/rotas.md), ainda sem medições. O método de coleta e os campos estão em [performance das rotas](11-performance-das-rotas.md). Criação não aceita status arbitrário; o estado inicial vem de RN-07. Em PATCH, `customer`, `deliveryAddress` ou `items`, quando enviados, substituem integralmente o respectivo bloco; campos omitidos são preservados. `items: []`, campos desconhecidos e valores nulos em campos obrigatórios são inválidos. Operação de substituição é transacional.
 
-`POST /api/v1/auth/login` e `GET /health/ready` são as únicas rotas implementadas até aqui. Login usa Argon2id, claim `sub` com UUID público e JWT assinado que valida emissor, audiência e expiração. O contrato de CRUD de pedidos não está implementado.
+`POST /api/v1/auth/login`, `GET /health/ready`, `POST /api/v1/orders`, `GET /api/v1/orders` e `GET /api/v1/orders/:id` estão implementados. Login usa Argon2id, claim `sub` com UUID público e JWT assinado que valida emissor, audiência e expiração. As rotas de pedido exigem esse token. PATCH e DELETE ainda não estão implementados.
 
 ## Corpo de criação ilustrativo
 
@@ -46,4 +46,4 @@ A resposta acrescenta `id` como UUID público, `status`, `createdAt` e `updatedA
 - Token com expiração padrão de 15 minutos, configurável de 1 a 60 minutos; sem refresh token no escopo inicial. Logout no consumidor descarta o token, sem promessa de revogação imediata no servidor.
 - Consumidores não devem colocar tokens em URLs ou logs. Não há frontend implementado ou planejado nesta entrega.
 
-Os DTOs de login já têm validação estrita e rejeitam campos desconhecidos. O filtro HTTP implementa o envelope uniforme e sanitiza erros 5xx; o mapeamento nunca expõe o ID integer interno. A arquitetura, o cache e a política de exceções estão em `04-arquitetura-e-dados.md`. Login usa `Cache-Control: no-store`; o cache interno em arquivos ainda não foi implementado.
+Os DTOs de login e pedidos têm validação estrita e rejeitam campos desconhecidos. O filtro HTTP implementa o envelope uniforme e sanitiza erros 5xx; o mapeamento nunca expõe o ID integer interno. A arquitetura e a política de exceções estão em `04-arquitetura-e-dados.md`. Respostas autenticadas usam `Cache-Control: no-store`; o cache interno em arquivos ainda não foi implementado.

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import type { AppConfig } from './shared/config/appConfig.js';
 import { AuthModule } from './features/auth/authModule.js';
+import { OrdersModule } from './features/orders/ordersModule.js';
 import { HealthController } from './features/health/healthController.js';
 import { DatabaseModule } from './shared/database/databaseModule.js';
 
@@ -13,6 +14,6 @@ export class AppModule {}
 export function createAppModule(config: AppConfig): DynamicModule {
   return {
     module: AppModule,
-    imports: [DatabaseModule.register(config), AuthModule],
+    imports: [DatabaseModule.register(config), AuthModule, OrdersModule],
   };
 }
