@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Controller,
+  Delete,
   Get,
   Header,
   HttpCode,
@@ -10,6 +11,7 @@ import {
   NotFoundException,
   ParseUUIDPipe,
   Post,
+  Patch,
   Res,
   UseGuards,
   Body,
@@ -25,7 +27,11 @@ import { CreateOrderDto } from './createOrderDto.js';
 import { ListOrdersDto } from './listOrdersDto.js';
 import { toPublicOrder } from './ordersMapper.js';
 import { DuplicateOrderNumberError } from './ordersTypes.js';
+import { OrderRuleViolation } from './orderModel.js';
 import { OrdersUseCases } from './ordersUseCases.js';
+// ValidationPipe needs the DTO class at runtime.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { UpdateOrderDto } from './updateOrderDto.js';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -80,5 +86,38 @@ export class OrdersController {
       throw new NotFoundException('Pedido não encontrado.');
     }
     return toPublicOrder(order);
+  }
+
+  @Patch(':id')
+  @Header('Cache-Control', 'no-store')
+  async update(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) publicId: string,
+    @Body() input: UpdateOrderDto,
+  ): Promise<ReturnType<typeof toPublicOrder>> {
+    if (Object.keys(input).length === 0) {
+      throw new BadRequestException('Envie pelo menos um campo editável.');
+    }
+    try {
+      const order = await this.orders.update(publicId, input);
+      if (!order) {
+        throw new NotFoundException('Pedido não encontrado.');
+      }
+      return toPublicOrder(order);
+    } catch (error) {
+      if (error instanceof DuplicateOrderNumberError || error instanceof OrderRuleViolation) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Header('Cache-Control', 'no-store')
+  async delete(@Param('id', new ParseUUIDPipe({ version: '4' })) publicId: string): Promise<void> {
+    const deleted = await this.orders.softDelete(publicId);
+    if (!deleted) {
+      throw new NotFoundException('Pedido não encontrado.');
+    }
   }
 }

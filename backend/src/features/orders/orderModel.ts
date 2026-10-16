@@ -41,3 +41,45 @@ export interface CreateOrderModel {
   readonly deliveryAddress: DeliveryAddressModel;
   readonly items: readonly OrderItemModel[];
 }
+
+export interface UpdateOrderModel {
+  readonly number?: string;
+  readonly expectedDeliveryDate?: string;
+  readonly status?: OrderStatus;
+  readonly customer?: CustomerModel;
+  readonly deliveryAddress?: DeliveryAddressModel;
+  readonly items?: readonly OrderItemModel[];
+}
+
+export class OrderRuleViolation extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OrderRuleViolation';
+  }
+}
+
+const allowedTransitions: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = {
+  PENDING: ['IN_TRANSIT', 'CANCELED'],
+  IN_TRANSIT: ['DELIVERED', 'CANCELED'],
+  DELIVERED: [],
+  CANCELED: [],
+};
+
+export function assertOrderUpdateAllowed(status: OrderStatus, update: UpdateOrderModel): void {
+  if (status === 'DELIVERED' || status === 'CANCELED') {
+    throw new OrderRuleViolation('Pedidos finalizados não podem ser editados.');
+  }
+
+  if (
+    status === 'IN_TRANSIT' &&
+    (update.number !== undefined || update.customer !== undefined || update.deliveryAddress !== undefined || update.items !== undefined)
+  ) {
+    throw new OrderRuleViolation('Em trânsito, somente a previsão de entrega ou o status pode mudar.');
+  }
+
+  if (update.status && update.status !== status) {
+    if (!allowedTransitions[status].includes(update.status)) {
+      throw new OrderRuleViolation('Transição de status não permitida.');
+    }
+  }
+}

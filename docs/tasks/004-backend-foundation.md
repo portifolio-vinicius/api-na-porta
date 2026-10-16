@@ -24,7 +24,7 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 - Migration existente `20261016000100_initial` e executor nativo de `make migrate`.
 - Contrato HTTP em `docs/05-api.md` e regras de infraestrutura em `docs/14-infraestrutura-e-acessos.md`.
 - Base existente: migration inicial, seed de pedido, Compose PostgreSQL, executor/backup/restore e Swarm em `develop`.
-- Sequência no branch: (1) bootstrap/Prisma/Docker, commit `a52a25e`; (2) login JWT e usuário fictício, commit `a95b948`; (3) criar/listar/detalhar pedidos com filtros e paginação; (4) editar e excluir logicamente; (5) cache por arquivos e métricas; (6) integração HTTP exigida antes do merge.
+- Sequência no branch: (1) bootstrap/Prisma/Docker, commit `a52a25e`; (2) login JWT e usuário fictício, commit `a95b948`; (3) criar/listar/detalhar pedidos com filtros e paginação, commit `45b0343`; (4) editar e excluir logicamente, commit em andamento; (5) cache compartilhado entre instâncias e métricas; (6) integração HTTP exigida antes do merge.
 
 ## Aceite
 
@@ -39,7 +39,8 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 
 - **Bloco 1 aprovado:** `make check`, `npm --prefix backend audit` (0 vulnerabilidades), `make docsCheck` e `git diff --check`.
 - **Bloco 2 concluído:** login JWT/Argon2id, limiter compartilhado, migration e seed de usuário (`a95b948`).
-- **Bloco 3 implementado:** POST, GET lista com filtros/paginação e GET detalhe; `make check` aprovado.
+- **Bloco 3 concluído:** POST, GET lista com filtros/paginação e GET detalhe; `make check` aprovado; commit `45b0343`.
+- **Bloco 4 implementado:** PATCH com validação de regras e DELETE lógico; migration 003 preserva itens substituídos. Validação estática/documental após atualizar os documentos.
 - **Bloco 2 validado:** `make check`, `npm --prefix backend audit` (0 vulnerabilidades), `make docsCheck` (25 arquivos, 0 erros), `git diff --check`.
 - **Não executado:** integração HTTP, `infraCheck`, segurança completa e build/scan da imagem do backend.
 - O gate `make integration` permanece reprovado até existir a suíte HTTP obrigatória e todos os cenários passarem.
@@ -52,3 +53,4 @@ Implementar o backend em blocos pequenos, com commits por entrega, preservando a
 - 2026-10-16: bloco 1 implementado nos commits `6f1a512` e `a52a25e`: bootstrap NestJS, schema Prisma, prontidão PostgreSQL e Dockerfile.
 - 2026-10-16: bloco 2 implementa login JWT, limiter compartilhado, migration e seed fictício; checks estáticos aprovados. Integração DB/HTTP e `infraCheck` ainda não foram executados.
 - 2026-10-16: bloco 3 implementa criação, listagem, filtros e detalhe de pedidos; checks de build/typecheck passaram. Integração HTTP continua pendente.
+- 2026-10-16: bloco 4 implementa edição, transições de estado e exclusão lógica de pedido/itens com migration aditiva. Integração HTTP, banco real e infraCheck não executados.

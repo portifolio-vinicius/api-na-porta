@@ -1,6 +1,6 @@
 # Contratos da API
 
-Prefixo `/api/v1`; JSON em UTF-8. Login, prontidão e criação/consulta de pedidos estão implementados. Rotas de pedidos exigem JWT Bearer.
+Prefixo `/api/v1`; JSON em UTF-8. Login, prontidão e rotas de pedidos estão implementados. Rotas de pedidos exigem JWT Bearer.
 
 ## Rotas
 
@@ -16,7 +16,7 @@ Prefixo `/api/v1`; JSON em UTF-8. Login, prontidão e criação/consulta de pedi
 
 As rotas da tabela são relativas ao prefixo. Todas constam no [inventário de performance](performance/rotas.md), ainda sem medições. O método de coleta e os campos estão em [performance das rotas](11-performance-das-rotas.md). Criação não aceita status arbitrário; o estado inicial vem de RN-07. Em PATCH, `customer`, `deliveryAddress` ou `items`, quando enviados, substituem integralmente o respectivo bloco; campos omitidos são preservados. `items: []`, campos desconhecidos e valores nulos em campos obrigatórios são inválidos. Operação de substituição é transacional.
 
-`POST /api/v1/auth/login`, `GET /health/ready`, `POST /api/v1/orders`, `GET /api/v1/orders` e `GET /api/v1/orders/:id` estão implementados. Login usa Argon2id, claim `sub` com UUID público e JWT assinado que valida emissor, audiência e expiração. As rotas de pedido exigem esse token. PATCH e DELETE ainda não estão implementados.
+`POST /api/v1/auth/login`, `GET /health/ready` e todas as rotas de pedidos da tabela estão implementados. Login usa Argon2id, claim `sub` com UUID público e JWT assinado que valida emissor, audiência e expiração. As rotas de pedido exigem esse token. PATCH valida as transições de status e substitui blocos enviados integralmente; DELETE marca o pedido como excluído sem remover suas linhas. A integração HTTP e a medição de performance ainda não foram executadas.
 
 ## Corpo de criação ilustrativo
 
