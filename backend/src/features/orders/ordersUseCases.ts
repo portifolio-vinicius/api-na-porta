@@ -1,16 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CACHE_INTERFACE } from '../../shared/cache/cacheTypes.js';
-import type { CacheInterface } from '../../shared/cache/cacheTypes.js';
+import type { CacheInterface, CacheOutcome } from '../../shared/cache/cacheTypes.js';
 import type { CreateOrderModel, OrderModel, UpdateOrderModel } from './orderModel.js';
-import { ORDERS_REPOSITORY } from './ordersTypes.js';
 import type { OrderFilters, OrderPage } from './ordersTypes.js';
 import type { OrdersRepositoryInterface } from './ordersRepositoryInterface.js';
 
-@Injectable()
 export class OrdersUseCases {
   constructor(
-    @Inject(ORDERS_REPOSITORY) private readonly repository: OrdersRepositoryInterface,
-    @Inject(CACHE_INTERFACE) private readonly cache: CacheInterface,
+    private readonly repository: OrdersRepositoryInterface,
+    private readonly cache: CacheInterface,
+    private readonly recordCacheOutcome: (outcome: CacheOutcome) => void = () => undefined,
   ) {}
 
   create(order: CreateOrderModel): Promise<OrderModel> {
@@ -43,12 +40,18 @@ export class OrdersUseCases {
   }
 
   private async findActiveWithCache(filters: OrderFilters): Promise<OrderPage> {
+    if (this.cache.enabled === false) {
+      this.recordCacheOutcome('bypass');
+      return this.repository.findActive(filters);
+    }
     const version = await this.repository.getCacheVersion();
     const key = `${version}:${JSON.stringify(filters)}`;
     let cached: OrderPage | null = null;
+    let cacheFailed = false;
     try {
       cached = await this.cache.get<OrderPage>('orders', key);
     } catch {
+      cacheFailed = true;
       // Cache is optional; the repository remains the source of truth.
     }
     if (cached && await this.repository.getCacheVersion() === version) {
@@ -59,12 +62,14 @@ export class OrdersUseCases {
           updatedAt: new Date(order.updatedAt),
         }));
         if (rows.every((order) => Number.isFinite(order.createdAt.getTime()) && Number.isFinite(order.updatedAt.getTime()))) {
+          this.recordCacheOutcome('hit');
           return { rows, total: cached.total };
         }
       } catch {
         // Invalid cache entries are treated as misses.
       }
     }
+    this.recordCacheOutcome(cacheFailed ? 'bypass' : 'miss');
     const page = await this.repository.findActive(filters);
     if (await this.repository.getCacheVersion() === version) {
       await this.cache.set('orders', key, page, 60).catch(() => undefined);
