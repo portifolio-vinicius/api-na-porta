@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/../common.sh"
+bash scripts/test/database-integration.sh
 backend
 script_exists test:integration
 docker_ready

@@ -48,13 +48,18 @@ verify("gate bloqueia JSON inválido", gate, False, extra_env={"NEEDS_JSON": "in
 
 with tempfile.TemporaryDirectory(prefix="naporta-pipeline-validation-") as tmp:
     root = Path(tmp)
-    shutil.copytree(ROOT / "scripts", root / "scripts")
-    shutil.copytree(ROOT / "docs", root / "docs")
-    shutil.copytree(ROOT / ".github", root / ".github")
-    for name in ("README.md", "ag.md", "backend/ag.md", "database/ag.md"):
+    shutil.copytree(ROOT / "scripts", root / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+    # Keep link-failure fixtures independent of the growing application tree.
+    # The real repository is checked separately by make docsCheck.
+    (root / "docs/performance").mkdir(parents=True)
+    for name in ("docs/05-api.md", "docs/performance/rotas.md"):
+        rows = [line for line in (ROOT / name).read_text().splitlines() if line.startswith("|")]
+        (root / name).write_text("\n".join(rows) + "\n")
+    (root / "README.md").write_text("# Fixture\n\n[Contrato](docs/05-api.md)\n")
+    for name in ("AGENTS.md", "backend/AGENTS.md", "database/AGENTS.md"):
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / name, target)
+        target.write_text("# Instruções da fixture descartável\n")
     for args in (["init", "-q"], ["add", "README.md"], ["-c", "user.name=Pipeline fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "Synthetic fixture"]):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
     # Exercise real Git worktrees and a local bare remote; never change the user's branches.

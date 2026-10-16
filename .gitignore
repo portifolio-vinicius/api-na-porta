@@ -1,6 +1,3 @@
-# Instruções locais opcionais; os três ag.md do projeto são versionados
-AGENTS.md
-
 # Dependências e arquivos gerados (Node.js / TypeScript)
 node_modules/
 dist/
@@ -40,3 +37,7 @@ Thumbs.db
 # Artefatos de execução
 artifacts/
 __pycache__/
+
+# Backups PostgreSQL privados
+*.dump
+*.dump.json
