@@ -113,6 +113,9 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). A aplicação continua pendente.
+
+
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.
 
 Replicação física assíncrona por streaming é a proposta para o PostgreSQL. Escritas, transações, autenticação e leituras que exigem consistência imediata usam o primário. Réplicas hot standby atendem somente leituras elegíveis e podem apresentar atraso. [Referência PostgreSQL](https://www.postgresql.org/docs/current/warm-standby.html).

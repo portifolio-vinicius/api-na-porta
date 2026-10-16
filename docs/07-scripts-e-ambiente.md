@@ -1,5 +1,7 @@
 # Make, scripts e ambiente local
 
+Nginx, escala Swarm e scripts de permissões estão implementados; veja [infraestrutura e acessos](16-infraestrutura-e-acessos.md).
+
 Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Há Compose do banco e scripts PostgreSQL. Ambiente completo com API, criação automática de branches e replicação continuam futuros; detalhes no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
 
 ## Catálogo de comandos e estado

@@ -68,3 +68,7 @@ Permissões mínimas, padrão `contents: read`; actions fixadas por SHA de commi
 Fluxo implementado, condicionado aos pré-requisitos do backend: `make preMerge TARGET=develop` → push da branch → PR → GitHub Actions → revisão → merge autorizado. Make prepara e valida; não substitui aprovação remota nem realiza merge automaticamente. Nesta entrega só há backend; não há job de frontend vazio ou aprovado artificialmente.
 
 Para master, o mesmo fluxo executa integração completa e constrói imagem identificada pelo commit, sem embutir segredos. Publicação de imagem, ambiente de homologação e deploy exigem destino e política definidos na fase de implementação/entrega. Não considerar merge como deploy executado.
+
+## Validação da infraestrutura
+
+`make infraCheck` integra o job backend-quality e make ci. O Trivy verifica o Dockerfile do proxy; o manifesto Swarm e nginx.conf são cobertos pelos checks executáveis, pois não são interpretados pelo scanner. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md).
