@@ -5,11 +5,11 @@ Implementação parcial: plano conservador, checks documentais e agregação de 
 ## Fluxo coordenado
 
 ```text
-Solicitações → orchestrator → fila de tarefas com aceite/arquivos
-  → branches e worktrees planejados, baseados em develop
-  → ativa uma funcionalidade → implementa → valida
-  → PR e gates → merge em develop → sincroniza a próxima branch
-  → repete até integrar a fila → promove develop para master
+Solicitações → orchestrator → tarefas com aceite/arquivos
+  → um worktree por funcionalidade, baseado em develop
+  → ativa em paralelo as tarefas com arquivos distintos → implementa → valida
+  → PRs e gates → merge em develop → sincroniza as branches que ainda dependem dessa base
+  → promove develop para master
 ```
 
 O protocolo de branches permanece no documento 06 e os gates no 09. Este documento adiciona a seleção de trabalho e a atualização documental; não cria um segundo fluxo de merge.
@@ -32,7 +32,7 @@ Segurança mínima, qualidade e integração mínima do documento 08 continuam o
 
 - Uma tarefa possui objetivo, critério de aceite, responsável, arquivos autorizados, dependências e comando de validação. Evitar delegar novamente uma investigação já concluída.
 - Ler primeiro índice, instruções aplicáveis, diff e trechos relevantes via busca; ampliar contexto somente quando uma dependência exigir. Não enviar o repositório ou histórico completo por padrão.
-- Preparar/planejar tarefas independentes em paralelo é permitido; implementação de funcionalidades é sequencial, com um worktree ativo por vez. Não delegar alterações de código concorrentes.
+- Implementar funcionalidades independentes ao mesmo tempo, cada uma em um worktree, quando os arquivos sob responsabilidade não se sobrepõem. Não delegar duas alterações concorrentes no mesmo arquivo.
 - Reutilizar resultados com referência ao commit, arquivos e hash de entrada. Invalidar resumo/decisão se sua fonte mudou; não reutilizar resultado desatualizado para aprovar código.
 - Scripts fazem inventário, validação, cálculos, tabelas e geração de relatórios. Modelo atua em ambiguidade, decisões, implementação e revisão semântica, somente no escopo autorizado.
 - Saídas para o agente são curtas: arquivos afetados, resultado, erros e caminho do relatório. Logs completos ficam em artefatos; em falha, ler trecho causal antes de ampliar. Não truncar informação necessária para corrigir a falha.

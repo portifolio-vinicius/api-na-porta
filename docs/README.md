@@ -7,7 +7,7 @@
 | [03 — Regras de negócio](03-regras-de-negocio.md) | Comportamentos e critérios do domínio |
 | [04 — Arquitetura e dados](04-arquitetura-e-dados.md) | Separação dos componentes, feature folders, tipos, identificadores e replicação |
 | [05 — API](05-api.md) | Contratos REST e autenticação JWT |
-| [06 — Fluxo de desenvolvimento](06-fluxo-de-desenvolvimento.md) | Fila de branches/worktrees, implementação sequencial e integração em develop |
+| [06 — Fluxo de desenvolvimento](06-fluxo-de-desenvolvimento.md) | Várias funcionalidades em worktrees paralelos e integração em develop |
 | [07 — Scripts e ambiente](07-scripts-e-ambiente.md) | Contratos dos scripts, Docker Compose, seed e replicação do banco |
 | [08 — Validação](08-validacao.md) | Integração no backend e critérios de aceite |
 | [09 — CI e segurança](09-ci-e-seguranca.md) | GitHub Actions, scanners e bloqueio de merge |

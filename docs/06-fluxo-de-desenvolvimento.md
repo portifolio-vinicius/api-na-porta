@@ -1,88 +1,79 @@
 # Fluxo de desenvolvimento e orchestrator
 
-O repositório usa `develop` como integração contínua e `master` como destino de versões aprovadas. Worktrees permitem preparar várias tarefas isoladas, mas a implementação é **sequencial: uma funcionalidade ativa por vez**. A fila pode conter várias branches/worktrees planejados; nenhum código de uma tarefa seguinte é editado até a tarefa ativa ser concluída e liberada. O bloqueio compartilhado do clone registra essa exclusividade.
+O repositório usa `develop` como integração contínua e `master` como destino de versões aprovadas. Várias funcionalidades podem ser implementadas ao mesmo tempo. Cada uma fica em um worktree e em uma branch próprios, criados a partir de `origin/develop`. O registro do clone reserva os arquivos de cada tarefa ativa e recusa outra ativação que use o mesmo caminho.
 
 ## Branches e sincronização
 
 ```text
 origin/develop
-  ├── feature/123-criar-pedido       worktree planejado/ativo, uma por vez
-  ├── feature/124-filtros-pedidos    worktree planejado, aguardando sua vez
-  └── fix/125-periodo-invertido       worktree planejado, aguardando sua vez
+  ├── feature/123-criar-pedido       worktree ativo
+  ├── feature/124-filtros-pedidos    worktree ativo, arquivos distintos
+  └── fix/125-periodo-invertido       worktree ativo, arquivos distintos
 
-cada branch → seu PR para develop → integração sequencial
+cada branch → seu PR para develop → integração quando o gate passar
 develop → PR para master após validação
 ```
 
 O nome identifica ticket e funcionalidade: `feature/<ticket>-<slug>` ou `fix/<ticket>-<slug>`. `feature/124-filtros-pedidos` e outros exemplos de branch não têm relação com feature folders do código.
 
-Cada tarefa parte do `origin/develop` atualizado e tem seu próprio worktree, plano em `docs/tasks/<ticket>.md`, aceite, dependências e lista de arquivos sob responsabilidade. Mais de uma tarefa planejada pode citar o mesmo arquivo, mas somente a tarefa ativa pode editá-lo. Depois da integração, as demais branches recebem o novo `origin/develop` antes de começar a alteração nesse arquivo. Worktrees isolam diretórios; não evitam conflito Git quando duas branches editadas divergem.
+Cada tarefa parte do `origin/develop` atualizado e tem seu próprio worktree, plano em `docs/tasks/<ticket>.md`, aceite, dependências e lista de arquivos sob responsabilidade. Duas tarefas ativas não podem listar o mesmo caminho nem um diretório que contenha o caminho da outra. Worktrees isolam os diretórios de trabalho; a reserva de arquivos evita que duas implementações editem o mesmo contrato ao mesmo tempo. Ela não elimina conflito de merge se a base mudar.
 
-A sincronização entre branches ocorre **na ordem da integração**. Após um PR entrar em `develop`, atualize cada branch pendente com o novo `origin/develop` antes de ativá-la e valide os conflitos nessa tarefa. Não copie commits de uma feature para outra nem faça branches dependentes entre si; uma dependência só começa após sua base entrar em `develop`. Assim, cada PR adiciona uma funcionalidade à integração acumulada sem reescrever histórico compartilhado.
+Depois que um PR entra em `develop`, cada branch ainda aberta que precise dessa base atualiza o próprio `origin/develop` antes do merge dela. Não copie commits de uma feature para outra. Uma tarefa que dependa de outra só começa depois que essa base entrar em `develop`. Cada PR adiciona uma funcionalidade à integração sem reescrever histórico compartilhado.
 
 A publicação inicial criou `master` e `develop` no commit `763efbd`. Cada nova tarefa parte de `origin/develop` atualizado; não recriar branches protegidas. Sem commits ou push diretos em `master` ou `develop`. O ruleset exige PR, merge commit, branch atualizada e gate aprovado; bloqueia force push e exclusão, sem bypass. Correções urgentes também partem de `develop`.
 
 ## Preparar várias tarefas
 
-Execute `make startTask` a partir de qualquer worktree limpo. O comando atualiza referências e cria uma branch e worktree a partir de `origin/develop`, com nome derivado da funcionalidade. Informe os arquivos sob responsabilidade; revise e complete o registro gerado antes de ativar:
+Execute `make startTask` a partir de qualquer worktree limpo. O comando atualiza referências e cria uma branch e um worktree a partir de `origin/develop`. Informe os arquivos sob responsabilidade; revise e complete o registro gerado antes de ativar:
 
 ```sh
 make startTask TYPE=feature TICKET=123 NAME=criar-pedido FILES=backend/src/features/orders,docs/05-api.md
-make startTask TYPE=feature TICKET=124 NAME=login FILES=backend/src/features/auth,docs/05-api.md
+make startTask TYPE=feature TICKET=124 NAME=login FILES=backend/src/features/auth
 ```
 
-Os arquivos dos exemplos não se sobrepõem. O script cria apenas tarefa planejada; não inicia implementação e não faz push, commit ou PR. Se outra tarefa precisar de um arquivo em uso, espere a integração da tarefa atual e atualize sua branch antes de ativar.
+Os arquivos dos exemplos não se sobrepõem, então as duas tarefas podem ser implementadas ao mesmo tempo. O script não faz push, commit ou PR.
 
-## Ativar uma tarefa por vez
+## Ativar tarefas em paralelo
 
-No worktree da tarefa escolhida, complete e commite `docs/tasks/<ticket>.md`; atualize a branch com `origin/develop` caso outra tarefa tenha sido integrada desde sua criação. Depois, ative o bloqueio do clone:
+No worktree da tarefa, complete e commite `docs/tasks/<ticket>.md`. Atualize a branch com `origin/develop` se essa base mudou desde a criação. Depois reserve os arquivos:
 
 ```sh
 cd ../LOVEL-NA-PORTA-123-criar-pedido
-git fetch origin
-git merge --no-edit origin/develop
 make taskActivate TICKET=123
+cd ../LOVEL-NA-PORTA-124-login
+make taskActivate TICKET=124
 make taskStatus
 ```
 
-Enquanto houver tarefa ativa, `make taskActivate` recusa ativar outro worktree. Implemente somente os arquivos e aceite registrados. A preparação documental e a revisão de requisitos de tarefas em fila podem continuar; edição de código de outra funcionalidade, delegação de implementação paralela e commits em outra branch ficam suspensos.
+`taskStatus` lista todas as tarefas ativas, com branch, worktree e arquivos. `taskActivate` recusa a segunda tarefa quando algum caminho coincide com uma reserva existente e informa o ticket que já o possui. Implemente somente os arquivos e o aceite registrados nessa tarefa.
 
-Concluída a implementação, rode os gates aplicáveis, deixe a árvore limpa e abra o PR. **Mantenha o bloqueio durante revisão e CI.** Depois que o PR for integrado em `develop`, libere a tarefa:
+Concluída a implementação, rode os gates aplicáveis, deixe a árvore limpa e abra o PR. A reserva dessa tarefa continua durante a revisão e a CI. As outras tarefas ativas seguem nos próprios worktrees. Depois que o PR for integrado em `develop`, libere só essa tarefa:
 
 ```sh
 make taskRelease TICKET=123
 ```
 
-Em seguida, atualize e ative a próxima branch planejada:
-
-```sh
-cd ../LOVEL-NA-PORTA-124-login
-git fetch origin
-git merge --no-edit origin/develop
-make taskActivate TICKET=124
-```
-
-O bloqueio fica no diretório Git compartilhado do clone, fora dos worktrees e do commit. `taskStatus` mostra a tarefa ativa. `taskRelease` exige árvore limpa e confirma que o commit da tarefa já é ancestral de `origin/develop`, evitando liberar a próxima funcionalidade antes do merge. Se o processo for interrompido, retome a tarefa no worktree indicado; não apague o bloqueio para iniciar outra em paralelo. A automação não impede edição manual de uma branch inativa, por isso o protocolo de ativação é obrigatório.
+`taskRelease` exige árvore limpa e confirma que o commit da tarefa já é ancestral de `origin/develop`. Liberar uma tarefa não libera as demais. O registro fica no diretório Git compartilhado do clone, fora dos worktrees e do commit. A automação não impede edição manual de uma branch inativa; o protocolo de ativação continua obrigatório para reservar os arquivos.
 
 ## Orchestrator e estados
 
-O orchestrator coordena a fila e revisa contratos; não delega implementação de funcionalidades simultâneas. Deve:
+O orchestrator coordena dependências e contratos e pode delegar implementações simultâneas a worktrees isolados. Deve:
 
-1. Registrar objetivo, aceite, dependências, responsável e arquivos exclusivos em cada tarefa planejada.
-2. Definir a ordem por dependência e atribuir um único proprietário para arquivos compartilhados.
-3. Manter exatamente uma tarefa em `em andamento`; as demais ficam `planejada`.
-4. Revisar a tarefa concluída, executar os gates e publicar seu PR para `develop`, mantendo-a como única tarefa ativa enquanto aguarda.
-5. Integrar o PR somente quando os gates obrigatórios passarem; depois atualizar as branches restantes a partir de `origin/develop` antes de ativá-las.
-6. Validar novamente o conjunto acumulado em `develop` e só então abrir PR `develop → master`.
+1. Registrar objetivo, aceite, dependências, responsável e arquivos exclusivos em cada tarefa.
+2. Atribuir um único responsável para cada arquivo compartilhado entre tarefas que vão andar juntas.
+3. Ativar em paralelo as tarefas cujos arquivos não se sobrepõem.
+4. Revisar cada tarefa, executar os gates e publicar o PR para `develop` sem esperar as outras tarefas independentes.
+5. Integrar cada PR quando os gates obrigatórios passarem e atualizar as branches que ainda dependem dessa base.
+6. Validar o conjunto acumulado em `develop` antes do PR `develop → master`.
 
-Estados: `planejada → em andamento → em revisão → integrada`. Só uma tarefa ocupa os estados `em andamento`/`em revisão` por vez. Requisitos ou arquivos em conflito são resolvidos na fila, antes de ativar a tarefa seguinte.
+Estados: `planejada → em andamento → em revisão → integrada`. Várias tarefas podem ocupar `em andamento` ou `em revisão` ao mesmo tempo. Arquivos em conflito ficam em uma única tarefa ativa até a integração.
 
 ## Caminho de integração
 
-- **Planejamento:** criar tantas branches/worktrees quantas forem úteis, com slugs funcionais distintos e arquivos/responsabilidades registrados.
-- **Implementação:** ativar uma tarefa; concluir, validar e commitar. Ela continua ativa enquanto seu PR aguarda gates/revisão; só a integração libera a fila.
-- **Sincronização:** após cada merge de PR, atualizar a próxima branch pendente com `origin/develop`, resolver qualquer conflito antes de ativá-la e repetir os gates.
-- **PR:** abrir um PR por funcionalidade, base `develop`. Manter apenas um PR da fila em implementação/revisão; merge só com gate aprovado.
+- **Planejamento:** criar um worktree por funcionalidade, com slug distinto e arquivos registrados.
+- **Implementação:** ativar cada tarefa independente e implementá-la no próprio worktree. A reserva permanece enquanto o PR aguarda gates e revisão.
+- **Sincronização:** depois de cada merge, atualizar as branches que ainda serão integradas com `origin/develop` e repetir os gates delas.
+- **PR:** abrir um PR por funcionalidade, com base `develop`. Vários PRs podem ficar abertos. O merge exige o gate aprovado.
 - **Produção:** PR `develop → master`, checks completos, revisão da compatibilidade de migrations e aprovação humana.
 
 `make preMerge TARGET=develop` valida a branch commitada; CI repete os gates no commit do PR. Os scripts não fazem merge, push forçado, reset destrutivo nem deploy automático. A promoção comprova que `origin/master` é ancestral do candidato e não perde alterações.

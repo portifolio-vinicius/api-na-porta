@@ -4,7 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'HELP'
 Uso: make startTask TYPE=feature|fix TICKET=<id> NAME=<slug> FILES=<caminho,caminho> [WORKTREE_PATH=<caminho>]
-Cria uma branch baseada em origin/develop e um worktree planejado. O worktree só deve ser editado após make taskActivate.
+Cria uma branch baseada em origin/develop e um worktree isolado. Ative com make taskActivate.
+Várias tarefas com arquivos distintos podem ficar ativas ao mesmo tempo.
 HELP
 }
 
@@ -53,6 +54,7 @@ worktree_path="$parent/$(basename "$worktree_path")"
 base_commit="$(git rev-parse origin/develop)"
 
 git worktree add -b "$branch" "$worktree_path" origin/develop
+mkdir -p "$worktree_path/docs/tasks"
 {
   printf '# Tarefa %s — %s\n\n' "$ticket" "$name"
   printf -- '- **Branch:** `%s`\n- **Worktree:** `%s`\n- **Base:** `origin/develop` em `%s`\n- **Status:** planejada\n- **Responsável:** orchestrator\n\n' "$branch" "$worktree_path" "$base_commit"
@@ -63,3 +65,4 @@ git worktree add -b "$branch" "$worktree_path" origin/develop
 
 printf 'Tarefa planejada: %s\nBranch: %s\nWorktree: %s\nBase: %s\n' "$ticket" "$branch" "$worktree_path" "$base_commit"
 printf 'Revise %s, complete objetivo/aceite e faça o commit inicial antes de ativar.\n' "$task_file"
+printf 'Outras funcionalidades podem ser criadas e ativadas em paralelo quando os arquivos não se sobrepõem.\n'
