@@ -46,7 +46,7 @@ Os scripts exigem conexão explícita, validam ambiente/nome do banco e mantêm 
 
 ## Modelagem e migrations
 
-A migration inicial cria `users`, `orders`, `order_customers`, `order_addresses`, `order_items`, `cache_versions`, enum de status, constraints e índices previstos no documento 04. IDs internos são integer; IDs públicos são UUID sem default, fornecidos pelo backend. O banco preserva números como texto e preços `numeric(12,2)`. Regras de transição, UUID público imutável, quantidade mínima de itens e limites de entrada continuam pendentes nas próximas features da API.
+A migration inicial cria `users`, `orders`, `order_customers`, `order_addresses`, `order_items`, `cache_versions`, enum de status, constraints e índices previstos no documento 04. A migration `20261016000200_login_attempt_limits` adiciona contadores compartilhados de falhas com chaves HMAC, bloqueio temporário e limpeza limitada de linhas expiradas via função `SECURITY DEFINER` com `search_path` fixo. IDs internos são integer; IDs públicos são UUID sem default, fornecidos pelo backend. O banco preserva números como texto e preços `numeric(12,2)`. Regras de pedidos e limites de entrada continuam pendentes nas próximas features da API.
 
 A fonte executável atual são os arquivos SQL em `database/prisma/migrations/<timestamp>_<descricao>/migration.sql`. Cada versão pode fornecer `rollback.sql`. O ledger `public._naporta_migrations` guarda nome, checksum de ambos os arquivos e data de aplicação. Alterações em arquivos já aplicados, versões desconhecidas ou histórico fora de ordem reprovam a execução.
 
@@ -54,7 +54,7 @@ O executor nativo aplica o lote pendente atomicamente e usa advisory lock para s
 
 **Decisão de implementação:** o executor PostgreSQL nativo é o único executor de migrations. `database/prisma/schema.prisma` mapeia as tabelas existentes para o Prisma ORM 7; o client é gerado no build da API e o adapter `pg` acessa o banco. O schema não cria nem aplica migrations. Executar dois mecanismos sobre o mesmo histórico não faz parte do fluxo atual.
 
-O seed não cria usuário de login nem senha. Ele mantém registros existentes, inclusive dados externos ao conjunto fictício. Seed completo de autenticação e cenários do backend permanece pendente.
+O seed SQL de pedidos mantém registros existentes, inclusive dados externos ao conjunto fictício. `npm --prefix backend run seed:demo-user` cria o usuário de demonstração com hash Argon2id e `naporta_migrator`, somente em `ENV=local|demo`; exige `DATABASE_URL`, `DEMO_USER_EMAIL` e `DEMO_USER_PASSWORD`, e não altera senha em execução repetida. Não execute contra produção.
 
 ## Backup, reversão e recuperação
 

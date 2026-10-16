@@ -84,3 +84,14 @@ model CacheVersion {
 
   @@map("cache_versions")
 }
+
+model LoginAttempt {
+  key             String    @id @db.Char(64)
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(6)
+  attempts        Int       @default(0) @db.SmallInt
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([updatedAt], map: "login_attempts_updated_at_idx")
+  @@map("login_attempts")
+}

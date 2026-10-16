@@ -1,20 +1,21 @@
-# Tarefa 004 — Fundação do backend
+# Tarefa 004 — Backend API em blocos
 
-- **Branch:** `feature/004-backend-foundation`
+- **Branch:** `feature/004-backend-api`
 - **Base:** `origin/develop` em `939c42c`
 - **Responsável:** orchestrator (Codex)
-- **Status:** em revisão
+- **Status:** em andamento
 - **PR:** ainda não aberto
 
 ## Objetivo
 
-Implementar o primeiro bloco executável do backend: bootstrap NestJS em TypeScript estrito, configuração validada, endpoint de prontidão e integração ORM com o schema PostgreSQL existente. Banco local, migration inicial, seed e permissões PostgreSQL já existem em `develop`; esta tarefa não os recria nem altera migrations aplicadas.
+Implementar o backend em blocos pequenos, com commits por entrega, preservando as migrations existentes e mantendo explícito o que ainda não passou pelos gates.
 
 ## Arquivos sob responsabilidade
 
 - `backend/package.json`, `backend/package-lock.json` e configuração de TypeScript/lint/build;
-- `backend/src/` para bootstrap, configuração, prontidão e adapter Prisma;
-- `database/prisma/schema.prisma` como mapeamento da migration existente;
+- `backend/src/` para bootstrap, configuração, autenticação, pedidos e adapters;
+- `database/prisma/schema.prisma` como mapeamento das migrations SQL;
+- migrations novas somente para tabelas exigidas pelas funcionalidades;
 - `backend/Dockerfile` para o contrato da imagem definido em `docs/14-infraestrutura-e-acessos.md`;
 - `docs/04-arquitetura-e-dados.md`, `docs/07-scripts-e-ambiente.md` e `README.md` somente para refletir capacidades implementadas.
 
@@ -22,27 +23,30 @@ Implementar o primeiro bloco executável do backend: bootstrap NestJS em TypeScr
 
 - Migration existente `20261016000100_initial` e executor nativo de `make migrate`.
 - Contrato HTTP em `docs/05-api.md` e regras de infraestrutura em `docs/14-infraestrutura-e-acessos.md`.
-- Próximas tarefas dependem desta fundação: autenticação (`005`), pedidos (`006`), filtros/edição/exclusão (`007`), cache e instrumentação (`008`).
+- Base existente: migration inicial, seed de pedido, Compose PostgreSQL, executor/backup/restore e Swarm em `develop`.
+- Sequência no branch: (1) bootstrap/Prisma/Docker, commit `a52a25e`; (2) login JWT e usuário fictício; (3) CRUD de pedidos; (4) filtros, edição e exclusão lógica; (5) cache por arquivos e métricas; (6) integração HTTP exigida antes do merge.
 
 ## Aceite
 
-- `make check` instala via lockfile e executa lint, typecheck e build;
-- configuração inválida encerra o bootstrap sem imprimir valores sensíveis;
-- `/health/ready` retorna 200 somente com banco acessível e 503 sem detalhes internos quando indisponível;
-- Prisma mapeia as tabelas e colunas existentes sem introduzir um segundo executor de migrations;
-- imagem escuta em `0.0.0.0:3000`, executa sem root e trata SIGTERM;
+- todas as rotas e comportamentos dos documentos 03/05 implementados e cobertos pela integração do documento 08;
+- banco, migrations, seed, roles e aplicação mantêm contratos consistentes;
+- Make/Docker Compose local executa banco, migrations, seed e API com cache de arquivos;
+- checks de qualidade, segurança, integração e documentação aprovados no candidato atual;
 - README e documentos afetados identificam explicitamente o que segue pendente;
 - integração HTTP real, autenticação e pedidos não são declarados prontos nesta tarefa.
 
 ## Validação e evidências
 
-- **Aprovado:** `make check` (lint, geração Prisma, typecheck e build); `npm --prefix backend audit` (0 vulnerabilidades); `make docsCheck` (25 arquivos, 0 erros); `git diff --check`.
-- **Não executado:** integração HTTP (a suíte obrigatória ainda não existe), validação Swarm e build/scan da imagem do backend.
-- **Integração HTTP:** pendente para as próximas tarefas; o gate `make integration` continua reprovado até existir a suíte obrigatória.
+- **Bloco 1 aprovado:** `make check`, `npm --prefix backend audit` (0 vulnerabilidades), `make docsCheck` e `git diff --check`.
+- **Bloco 2 concluído:** login JWT/Argon2id, limiter compartilhado, migration e seed de usuário.
+- **Validação do bloco 2:** `make check`, `npm --prefix backend audit` (0 vulnerabilidades), `make docsCheck` (25 arquivos, 0 erros), `git diff --check`.
+- **Não executado:** integração HTTP, `infraCheck`, segurança completa e build/scan da imagem do backend.
+- O gate `make integration` permanece reprovado até existir a suíte HTTP obrigatória e todos os cenários passarem.
 - **Scripts de criação de branch/worktree:** `make startTask` / `scripts/git/start-task.sh` ainda ausentes; branch criada manualmente a partir de `origin/develop`.
 - **PR:** pendente.
 
 ## Histórico incremental
 
-- 2026-10-16: tarefa registrada na branch `feature/004-backend-foundation`, baseada em `origin/develop`.
-- 2026-10-16: bootstrap NestJS, schema Prisma mapeado, prontidão PostgreSQL e Dockerfile implementados; autenticação e pedidos permanecem em tarefas posteriores.
+- 2026-10-16: tarefa registrada na branch `feature/004-backend-api`, baseada em `origin/develop` (`939c42c`).
+- 2026-10-16: bloco 1 implementado nos commits `6f1a512` e `a52a25e`: bootstrap NestJS, schema Prisma, prontidão PostgreSQL e Dockerfile.
+- 2026-10-16: bloco 2 implementa login JWT, limiter compartilhado, migration e seed fictício; checks estáticos aprovados. Integração DB/HTTP e `infraCheck` ainda não foram executados.

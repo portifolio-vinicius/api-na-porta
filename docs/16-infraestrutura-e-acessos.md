@@ -8,7 +8,7 @@ HTTPS → Nginx nos nós de borda → réplicas stateless do backend → Postgre
 
 Somente a porta 443 é publicada, em modo host, preservando o IP do cliente; um proxy por nó marcado para borda. DNS ou balanceador externo deve apontar para esses nós. A porta 8080 é apenas para o healthcheck interno. Nginx exige TLS 1.2/1.3, remove identificação de versão, adiciona cabeçalhos de segurança, limita payload a 1 MiB e aplica timeouts. Sobrescreve cabeçalhos de origem; caso haja CDN/balanceador externo, configurar explicitamente suas redes confiáveis antes de usar o IP encaminhado. Os logs de acesso omitem URLs, queries, corpos e tokens.
 
-Limites iniciais por IP e por instância Nginx: API 30 requisições/s com burst de 60, login 5/min com burst de 5, 20 conexões simultâneas. Rejeições retornam 429. Contadores não são distribuídos entre nós: o backend ainda deve implementar limitação compartilhada de login. Esses números são pontos iniciais de configuração, sem garantia de throughput. [Referência de limites](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html).
+Limites iniciais por IP e por instância Nginx: API 30 requisições/s com burst de 60, login 5/min com burst de 5, 20 conexões simultâneas. Rejeições retornam 429. O login também aplica bloqueio compartilhado de 15 minutos após cinco falhas por email/IP, armazenado no PostgreSQL como HMAC; linhas antigas são removidas em lotes limitados por função com permissão explícita. Esses números são pontos iniciais de configuração, sem garantia de throughput. [Referência de limites](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html).
 
 Nginx e backend executam sem root, sem capabilities e com filesystem somente leitura. Cache em `/tmp/naporta-cache` é privado por tarefa, descartável e limitado pelo tmpfs. A API precisa implementar a invalidação entre instâncias prevista no documento 04. O PostgreSQL conserva o entrypoint oficial para preparar as permissões do volume, que executa o servidor como usuário postgres.
 
@@ -54,7 +54,7 @@ Número inicial: duas réplicas; scripts aceitam de uma a quatro. Cada processo 
 
 A imagem deve conter Node.js com `fetch`, `/bin/sh`, `dist/main.js` relativo ao `WORKDIR`, e permitir execução com UID/GID 1000. Deve escutar em `0.0.0.0:3000`, encerrar graciosamente em SIGTERM e fornecer `/health/ready` (HTTP 200 somente quando a aplicação e o banco estiverem prontos). Esse endpoint não é publicado pelo proxy. Nenhuma migration deve rodar no bootstrap das réplicas.
 
-O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Cache versionado, login e contrato JWT em todas as tarefas continuam pendentes. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão agora executa uma consulta real ao banco.
+O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Login com Argon2id/JWT e limitação compartilhada estão implementados; cache de arquivos e rotas de pedidos continuam pendentes. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão agora executa uma consulta real ao banco.
 
 ## Permissões do PostgreSQL
 
@@ -63,7 +63,7 @@ O bootstrap em volume novo aplica [roles.sql](../database/security/roles.sql) tr
 | Role | Permissões |
 | --- | --- |
 | `naporta_migrator` | Dono do schema `public`, cria/altera objetos; sem superuser, criação de bancos/roles, replicação ou bypass de RLS |
-| `naporta_app` | Consulta usuários para login; consulta/insere/atualiza pedidos, itens, snapshots e versões de cache; sem DELETE, TRUNCATE, DDL ou acesso à tabela de migrations |
+| `naporta_app` | Consulta usuários para login; consulta/insere/atualiza tentativas de login, pedidos, itens, snapshots e versões de cache; sem exclusão direta, TRUNCATE, DDL ou acesso à tabela de migrations. Pode executar somente a função limitada de limpeza de tentativas expiradas |
 | `naporta_reader` | Consulta somente tabelas de pedidos; sem leitura de hashes de senha e sem escrita |
 
 PUBLIC perde acesso ao banco/schema/objetos. Funções futuras criadas pelo migrator não concedem EXECUTE a PUBLIC. Sem grants genéricos para tabelas futuras: depois de cada migration, [grants.sql](../database/security/grants.sql) reaplica uma lista explícita e falha se faltarem tabelas. Objetos devem ser criados por `naporta_migrator`, pois default privileges são associados ao criador. [Privilégios padrão PostgreSQL](https://www.postgresql.org/docs/current/sql-alterdefaultprivileges.html).

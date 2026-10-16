@@ -12,14 +12,19 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "prisma generate --schema ../database/prisma/schema.prisma && tsc --noEmit -p tsconfig.json",
     "build": "prisma generate --schema ../database/prisma/schema.prisma && tsc -p tsconfig.build.json",
+    "seed:demo-user": "npm run build && node dist/seedDemoUser.js",
     "start": "node dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",
     "@nestjs/core": "11.2.7",
+    "@nestjs/jwt": "11.0.2",
     "@nestjs/platform-express": "11.2.7",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "argon2": "0.45.1",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
     "pg": "8.16.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
@@ -28,6 +33,7 @@
     "@eslint/js": "9.39.1",
     "@types/express": "5.0.6",
     "@types/node": "24.10.0",
+    "@types/pg": "8.15.5",
     "eslint": "9.39.1",
     "globals": "16.5.0",
     "prisma": "7.10.1",

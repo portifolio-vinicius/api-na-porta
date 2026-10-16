@@ -2,7 +2,7 @@
 
 Documentação de uma Web API de pedidos consumida por um portal web. O desafio prevê entrega em repositório público no GitHub, em três dias corridos a partir do recebimento do e-mail. A data de recebimento não foi informada; não há prazo absoluto calculado.
 
-**Etapa atual: fundação HTTP do backend implementada; autenticação e pedidos pendentes.** Há bootstrap NestJS, prontidão que consulta PostgreSQL, schema Prisma mapeado e imagem Docker sem root. Migrations SQL, seed e operações PostgreSQL seguem como fonte e executor do banco. Ainda faltam login JWT, CRUD/filtros de pedidos, cache, Compose completo da API e integração HTTP; os gates não aprovam essas ausências. Veja [execução das esteiras](docs/13-esteiras-executaveis.md).
+**Etapa atual: bootstrap e login do backend implementados; pedidos e cache pendentes.** A API NestJS verifica prontidão PostgreSQL, autentica com JWT e usa schema Prisma mapeado. Migrations SQL continuam com executor nativo. Faltam CRUD/filtros, cache, Compose completo da API e suíte de integração HTTP; os gates não aprovam essas ausências. Veja [execução das esteiras](docs/13-esteiras-executaveis.md).
 
 O [repositório público](https://github.com/portifolio-vinicius/api-na-porta) usa `master` como padrão e `develop` como base das tarefas. Ambas aceitam alterações somente por merge de PR com gate aprovado; push direto, force push e exclusão estão bloqueados, sem bypass. Configuração no [documento 09](docs/09-ci-e-seguranca.md) e evidências no [documento 14](docs/14-publicacao-e-protecao.md). A base inicial ainda não representa uma aplicação aprovada para produção.
 
@@ -21,7 +21,7 @@ Backend em Node.js 24, NestJS 11, PostgreSQL 18 e Prisma ORM 7 com adapter `pg`.
 
 ## Execução
 
-Para compilar: `make check`. Para iniciar localmente, forneça `DATABASE_URL` exportada com acesso ao banco e rode `npm --prefix backend run build && npm --prefix backend start`; `/health/ready` responde 200 somente quando o banco responde, caso contrário 503. `make dbUp` prepara apenas PostgreSQL. A imagem pode ser construída com `docker build -f backend/Dockerfile -t naporta-backend:local .`. Login, pedidos, Compose completo e métricas HTTP ainda não estão implementados.
+Para compilar: `make check`. Para iniciar localmente, exporte `DATABASE_URL`, `JWT_SECRET` (mínimo 32 bytes), `JWT_ISSUER` e `JWT_AUDIENCE`; rode `npm --prefix backend run build && npm --prefix backend start`. `/health/ready` responde 200 somente quando o banco responde, caso contrário 503. Login: `POST /api/v1/auth/login`. O usuário fictício é criado com `ENV=local|demo`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD` e `DATABASE_URL` usando `naporta_migrator`, via `npm --prefix backend run seed:demo-user`. `make dbUp` prepara apenas PostgreSQL. A imagem pode ser construída com `docker build -f backend/Dockerfile -t naporta-backend:local .`. Pedidos, Compose completo e métricas HTTP ainda não estão implementados.
 
 
 Para validar documentação, execute `make docsCheck`; para operações reais do banco, `make dbIntegration`. Configuração do banco em [operações PostgreSQL](docs/15-postgresql-operacoes.md). `make up` para API, migrations e cache ainda está planejado. `make integration` continua bloqueado pela ausência da suíte HTTP; a existência do bootstrap não aprova os requisitos de autenticação ou pedidos. Veja [o catálogo de comandos](docs/07-scripts-e-ambiente.md).
