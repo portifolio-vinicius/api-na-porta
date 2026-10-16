@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../../backend/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  CANCELED
+
+  @@map("order_status")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  publicId     String   @unique @map("public_id") @db.Uuid
+  email        String   @unique @db.Text
+  passwordHash String   @map("password_hash") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+model Order {
+  id                   Int           @id @default(autoincrement())
+  publicId             String        @unique @map("public_id") @db.Uuid
+  number               String        @unique @db.Text
+  expectedDeliveryDate DateTime      @map("expected_delivery_date") @db.Date
+  status               OrderStatus   @default(PENDING)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt            DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  customer             OrderCustomer?
+  address              OrderAddress?
+  items                OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderCustomer {
+  orderId  Int    @id @map("order_id")
+  name     String @db.Text
+  document String @db.Text
+  order    Order  @relation(fields: [orderId], references: [id])
+
+  @@map("order_customers")
+}
+
+model OrderAddress {
+  orderId   Int     @id @map("order_id")
+  street    String  @db.Text
+  number    String  @db.Text
+  complement String? @db.Text
+  district   String  @db.Text
+  city       String  @db.Text
+  state      String  @db.Text
+  postalCode String @map("postal_code") @db.Text
+  country   String  @db.Text
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  @@map("order_addresses")
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int     @map("order_id")
+  description String  @db.Text
+  price       Decimal @db.Decimal(12, 2)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  order       Order   @relation(fields: [orderId], references: [id])
+
+  @@index([orderId], map: "order_items_order_id_idx")
+  @@map("order_items")
+}
+
+model CacheVersion {
+  namespace String @id @db.Text
+  version   BigInt @default(1)
+
+  @@map("cache_versions")
+}
+
+model LoginAttempt {
+  key             String    @id @db.Char(64)
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(6)
+  attempts        Int       @default(0) @db.SmallInt
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([updatedAt], map: "login_attempts_updated_at_idx")
+  @@map("login_attempts")
+}

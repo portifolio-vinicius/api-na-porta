@@ -1,6 +1,6 @@
 # Esteiras executáveis
 
-Implementadas em 2026-10-16 após autorização para sair da etapa documental. O backend HTTP continua pendente; operações PostgreSQL reais foram adicionadas posteriormente e estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
+Implementadas em 2026-10-16 após autorização para sair da etapa documental. Bootstrap, prontidão, login JWT, todas as rotas de pedidos, cache local para listagem e Compose de desenvolvimento estão implementados; métricas e integração HTTP continuam pendentes. Operações PostgreSQL reais estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
 
 ## Uso
 
@@ -40,7 +40,7 @@ make docsCheck
 | `validateFlow` | Exige commit, árvore limpa, branch/destino válidos e ancestralidade da referência remota local |
 | `preMerge` | Valida fluxo e executa CI; referência remota deve ser atualizada pelo responsável antes da execução |
 
-O backend deve fornecer `backend/package.json`, `backend/package-lock.json`, `backend/src`, `backend/test` e `backend/Dockerfile`. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP pelo wrapper `make integration`. A futura suíte `test:integration` deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não implementa esse ambiente nem permite substituir esses testes por mocks. Geração do Prisma, quando necessária, deve ser explicitamente incorporada ao build/preparo do backend; instalação de dependências não executa scripts de terceiros automaticamente.
+O backend agora fornece `backend/package.json`, lockfile, `src`, schema Prisma e Dockerfile. `make check` instala as dependências, gera Prisma Client e executa lint, typecheck e build. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP por `make integration`. A suíte obrigatória `test:integration` ainda não existe; deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não permite substituir esses testes por mocks. A ausência da suíte continua reprovando o gate de integração, inclusive para a autenticação implementada.
 
 Segurança: npm audit inclui dependências de desenvolvimento e bloqueia high/critical; Gitleaks verifica arquivos e histórico disponível com saída redigida; Semgrep usa regras locais para execução dinâmica, shell e queries inseguras; Trivy verifica configuração e imagem construída. Gitleaks 8.30.1, Semgrep 1.181.0 e Trivy 0.76.0 usam imagens fixadas por digest. Regras SAST iniciais têm cobertura limitada e devem ser ampliadas conforme o código surgir. Falha de ferramenta, download ou pré-requisito reprova a etapa. O scan de imagem não monta o socket Docker no scanner.
 
