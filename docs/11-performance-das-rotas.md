@@ -1,6 +1,6 @@
 # Performance, latência, status e volume por rota
 
-O agregador e validador de artefatos estão implementados; a instrumentação HTTP permanece planejada. Veja [o contrato executável](13-esteiras-executaveis.md). A API não existe nesta etapa; não há medidas, baseline nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
+O agregador e validador de artefatos estão implementados; a instrumentação HTTP permanece planejada. Veja [o contrato executável](13-esteiras-executaveis.md). A API está implementada parcialmente, mas não há medidas, baseline nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
 
 ## Unidade de observação
 

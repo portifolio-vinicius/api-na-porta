@@ -27,6 +27,8 @@ make dbDown
 
 O projeto Compose deriva de `PGDATABASE`, isolando volumes por banco. O nome padrão do container é `naporta-<PGDATABASE com hífens>-db`; `DB_CONTAINER` permite nome explícito. `dbDown` preserva o volume. Repetir `dbUp` reutiliza os dados; credenciais e banco de inicialização só são aplicados pelo entrypoint a um volume vazio. O Compose atual sobe somente o banco, sem API ou réplica.
 
+`make up` acrescenta o bootstrap local de `naporta_migrator` e `naporta_app`, executa migrations/seed usando a role migrator e aplica `grants.sql` antes de iniciar a API. A senha de administrador inicial do container, `MIGRATOR_PASSWORD` e `APP_PASSWORD` são distintas; os DSNs da API usam o hostname de Compose `db`, enquanto os scripts no host usam `PGHOST`/`PGPORT`. Esse bootstrap é restrito a `local`/`demo` e não substitui a configuração de roles/secrets do Swarm.
+
 Os scripts exigem conexão explícita, validam ambiente/nome do banco e mantêm senhas fora dos argumentos e logs. Esses checks validam a configuração informada; o responsável também mantém credenciais e permissões separadas por ambiente. Produção fica fora dos destinos permitidos por essas rotinas.
 
 ## Comandos
@@ -46,15 +48,15 @@ Os scripts exigem conexão explícita, validam ambiente/nome do banco e mantêm 
 
 ## Modelagem e migrations
 
-A migration inicial cria `users`, `orders`, `order_customers`, `order_addresses`, `order_items`, `cache_versions`, enum de status, constraints e índices previstos no documento 04. IDs internos são integer; IDs públicos são UUID sem default, fornecidos pelo futuro backend. O banco preserva números como texto e preços `numeric(12,2)`. Regras de transição, UUID público imutável, quantidade mínima de itens e limites de entrada continuam sob responsabilidade do backend ainda pendente.
+A migration inicial cria `users`, `orders`, `order_customers`, `order_addresses`, `order_items`, `cache_versions`, enum de status, constraints e índices previstos no documento 04. A migration `20261016000200_login_attempt_limits` adiciona contadores compartilhados de falhas com chaves HMAC, bloqueio temporário e limpeza limitada de linhas expiradas via função `SECURITY DEFINER` com `search_path` fixo. A migration `20261016000300_soft_delete_order_items` adiciona marca de exclusão lógica aos itens e índice parcial para itens ativos. IDs internos são integer; IDs públicos são UUID sem default, fornecidos pelo backend. O banco preserva números como texto e preços `numeric(12,2)`. A regra de exclusão lógica é aplicada pela API e requer a migration 003.
 
 A fonte executável atual são os arquivos SQL em `database/prisma/migrations/<timestamp>_<descricao>/migration.sql`. Cada versão pode fornecer `rollback.sql`. O ledger `public._naporta_migrations` guarda nome, checksum de ambos os arquivos e data de aplicação. Alterações em arquivos já aplicados, versões desconhecidas ou histórico fora de ordem reprovam a execução.
 
 O executor nativo aplica o lote pendente atomicamente e usa advisory lock para serializar operações. Os arquivos SQL contêm somente comandos transacionais; o executor controla abertura e fechamento da transação. Operações como `CREATE INDEX CONCURRENTLY`, comandos psql e mudanças que exigem execução fora de transação não pertencem a esse formato. DDL que falha deixa schema e ledger anteriores preservados.
 
-**Decisão de implementação:** o executor PostgreSQL é o único executor de migrations nesta etapa. Prisma continua planejado para o ORM; `schema.prisma` e Prisma Migrate ainda não existem. A futura integração deve mapear o schema existente e definir baseline compatível antes de trocar executor. Executar dois mecanismos sobre o mesmo histórico não faz parte do fluxo atual.
+**Decisão de implementação:** o executor PostgreSQL nativo é o único executor de migrations. `database/prisma/schema.prisma` mapeia as tabelas existentes para o Prisma ORM 7; o client é gerado no build da API e o adapter `pg` acessa o banco. O schema não cria nem aplica migrations. Executar dois mecanismos sobre o mesmo histórico não faz parte do fluxo atual.
 
-O seed não cria usuário de login nem senha. Ele mantém registros existentes, inclusive dados externos ao conjunto fictício. Seed completo de autenticação e cenários do backend permanece pendente.
+O seed SQL de pedidos mantém registros existentes, inclusive dados externos ao conjunto fictício. `npm --prefix backend run seed:demo-user` cria o usuário de demonstração com hash Argon2id e `naporta_migrator`, somente em `ENV=local|demo`; exige `DATABASE_URL`, `DEMO_USER_EMAIL` e `DEMO_USER_PASSWORD`, e não altera senha em execução repetida. Não execute contra produção.
 
 ## Backup, reversão e recuperação
 

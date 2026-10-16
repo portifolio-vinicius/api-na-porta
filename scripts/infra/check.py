@@ -112,6 +112,8 @@ try:
         run('bash', 'scripts/db/access.sh', env=dict(db_env, DB_ACCESS_ACTION='grants'), ok=False)
         verify('permissões falham antes das migrations', True)
         sql('SET ROLE naporta_migrator;\n' + (ROOT / 'database/prisma/migrations/20261016000100_initial/migration.sql').read_text())
+        for migration in sorted((ROOT / 'database/prisma/migrations').glob('*/migration.sql'))[1:]:
+            sql('SET ROLE naporta_migrator;\n' + migration.read_text())
         sql("SET ROLE naporta_migrator; CREATE TABLE public._prisma_migrations(id text); CREATE TABLE public._naporta_migrations(name text); CREATE FUNCTION public.private_function() RETURNS integer LANGUAGE sql AS 'SELECT 1';")
         run('bash', 'scripts/db/access.sh', env=dict(db_env, DB_ACCESS_ACTION='grants'))
         run('bash', 'scripts/db/access.sh', env=dict(db_env, DB_ACCESS_ACTION='grants'))
