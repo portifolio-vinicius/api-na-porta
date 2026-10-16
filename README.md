@@ -4,6 +4,8 @@ Documentação de uma Web API de pedidos consumida por um portal web. O desafio 
 
 **Etapa atual: esteiras implementadas; aplicação pendente.** Há Makefile, scripts de validação e workflow GitHub Actions. Ainda não há backend executável, dependências da aplicação, migrations ou Docker Compose. Os gates falham quando seus pré-requisitos estão ausentes. Veja [execução das esteiras](docs/13-esteiras-executaveis.md).
 
+O [repositório público](https://github.com/portifolio-vinicius/api-na-porta) usa `master` como padrão e `develop` como base das tarefas. Ambas aceitam alterações somente por merge de PR com gate aprovado; push direto, force push e exclusão estão bloqueados, sem bypass. Configuração no [documento 09](docs/09-ci-e-seguranca.md) e evidências no [documento 14](docs/14-publicacao-e-protecao.md). A base inicial ainda não representa uma aplicação aprovada para produção.
+
 ## Organização
 
 - `backend/`: futura API Node.js; instruções em [backend/ag.md](backend/ag.md).
@@ -25,4 +27,4 @@ Planejamento da [esteira eficiente](docs/10-eficiencia-e-documentacao.md) e da [
 
 ## Entrega
 
-Antes de publicar: validar o fluxo completo, documentar a execução real, remover segredos e dados pessoais, conferir a licença dos arquivos e tornar o repositório público. O envio do link por e-mail será realizado pelo responsável pela entrega. Serverless fica fora do escopo inicial.
+O repositório já está público. Antes da entrega da aplicação: validar o fluxo completo, registrar a execução real, revisar segredos/dados pessoais e conferir a licença dos arquivos. A CI atual reprova por ausência da aplicação; isso impede novos merges nas branches protegidas. O envio do link por e-mail será realizado pelo responsável pela entrega. Serverless fica fora do escopo inicial.

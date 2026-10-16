@@ -34,7 +34,7 @@ Cada execução usa banco/cache próprios e dados fictícios determinísticos; p
 
 GitHub Actions chama os mesmos Make/scripts locais, conforme `09-ci-e-seguranca.md`. PR para develop exige check estático, segurança e integração relevantes aprovados no commit candidato atualizado. Após merge, repetir validação do conjunto. Promoção develop → master exige conjunto completo, incluindo perfil escalado. Orchestrator registra commit, comandos, resultados e limitações.
 
-## Aceite documental atual
+## Base documental e operacional atual
 
 - Requisitos, regras e contratos organizados com backend e banco como componentes ativos.
 - Exatamente três ag.md complementares: raiz, backend e database.
@@ -44,4 +44,4 @@ GitHub Actions chama os mesmos Make/scripts locais, conforme `09-ci-e-seguranca.
 
 ## Aceite futuro
 
-Comprovar requisitos obrigatórios com integração e checks de segurança; atualizar README com comandos executados; configurar proteção real de branches; revisar dados/segredos e disponibilizar repositório público. Frontend não é critério de entrega atual. Bônus não adotados devem ser identificados sem se tornarem exigências originais do e-mail.
+Comprovar requisitos obrigatórios com integração e checks de segurança; atualizar README com comandos executados; manter proteção real de branches e revisar dados/segredos antes de cada publicação. O repositório público e o ruleset já existem; evidências no [documento 14](14-publicacao-e-protecao.md). Frontend não é critério de entrega atual. Bônus não adotados devem ser identificados sem se tornarem exigências originais do e-mail.

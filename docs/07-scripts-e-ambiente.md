@@ -1,31 +1,34 @@
 # Make, scripts e ambiente local
 
-Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Os alvos de ambiente, branches de tarefa e banco da tabela continuam futuros; não há Compose. Make será a entrada única; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
+Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Os alvos de ambiente, branches de tarefa e banco da tabela continuam futuros; não há Compose. Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
 
-## Make e scripts propostos
+## Catálogo de comandos e estado
 
-| Comando futuro | Script futuro / responsabilidade |
-| --- | --- |
-| `make help` | Listar alvos e variáveis aceitas |
-| `make startTask TYPE=feature TICKET=124 NAME=filtros-pedidos` | `scripts/git/start-task.sh`: branch de develop e worktree isolado |
-| `make validateFlow TARGET=develop` | `scripts/git/validate-flow.sh`: conferir origem, destino e estado Git |
-| `make up` | `scripts/dev/up.sh`: validar ambiente, subir banco, migrations, seed, volume de cache e API |
-| `make down` | `scripts/dev/down.sh`: parar preservando volumes |
-| `make logs SERVICE=api` | `scripts/dev/logs.sh`: logs sem despejar configuração |
-| `make migrate ENV=local` | `scripts/db/migrate.sh`: migrations no destino permitido |
-| `make seed ENV=local` | `scripts/db/seed.sh`: carga fictícia idempotente |
-| `make scale API_INSTANCES=2` | `scripts/dev/scale.sh`: perfil escalado, pools e réplica |
-| `make replicaInit ENV=local` | `scripts/db/replica-init.sh`: base backup e standby vazio |
-| `make replicaStatus ENV=local` | `scripts/db/replica-status.sh`: estado e lag sem segredos |
-| `make check` | `scripts/check.sh`: linter, typecheck estrito e build |
-| `make security` | `scripts/security/check.sh`: coordenar scripts mínimos de segurança definidos no documento 09 |
-| `make integration` | `scripts/test/backend-integration.sh`: API, banco e cache reais isolados |
-| `make taskPlan TARGET=develop` | `scripts/tasks/plan.sh`: impacto e contexto mínimo |
-| `make docsUpdate` | `scripts/docs/update.sh`: atualizar somente conteúdo afetado |
-| `make docsCheck` | `scripts/docs/check.sh`: validar links, contratos, inventário e divergências |
-| `make routeReport` | `scripts/metrics/route-report.sh`: agregar métricas já coletadas na integração |
-| `make ci` | `scripts/ci/check.sh`: coordenar plano de impacto, check, security, integração instrumentada, routeReport e docsCheck; falhar se qualquer etapa falhar |
-| `make preMerge TARGET=develop` | `scripts/git/pre-merge.sh`: validar fluxo e executar `make ci`; não faz merge |
+| Comando | Script / responsabilidade | Estado |
+| --- | --- | --- |
+| `make help` | Listar alvos e variáveis aceitas | Implementado; pré-requisitos no documento 13 |
+| `make startTask TYPE=feature TICKET=124 NAME=filtros-pedidos` | `scripts/git/start-task.sh`: branch de develop e worktree isolado | Planejado; alvo/script ausentes |
+| `make validateFlow TARGET=develop` | `scripts/git/validate-flow.sh`: conferir origem, destino e estado Git | Implementado; pré-requisitos no documento 13 |
+| `make up` | `scripts/dev/up.sh`: validar ambiente, subir banco, migrations, seed, volume de cache e API | Planejado; alvo/script ausentes |
+| `make down` | `scripts/dev/down.sh`: parar preservando volumes | Planejado; alvo/script ausentes |
+| `make logs SERVICE=api` | `scripts/dev/logs.sh`: logs sem despejar configuração | Planejado; alvo/script ausentes |
+| `make migrate ENV=local` | `scripts/db/migrate.sh`: migrations no destino permitido | Planejado; alvo/script ausentes |
+| `make seed ENV=local` | `scripts/db/seed.sh`: carga fictícia idempotente | Planejado; alvo/script ausentes |
+| `make scale API_INSTANCES=2` | `scripts/dev/scale.sh`: perfil escalado, pools e réplica | Planejado; alvo/script ausentes |
+| `make replicaInit ENV=local` | `scripts/db/replica-init.sh`: base backup e standby vazio | Planejado; alvo/script ausentes |
+| `make replicaStatus ENV=local` | `scripts/db/replica-status.sh`: estado e lag sem segredos | Planejado; alvo/script ausentes |
+| `make pipelineCheck` | `scripts/ci/validate.py`: validar as próprias esteiras com fixtures descartáveis | Implementado; 58 verificações |
+| `make check` | `scripts/check.sh`: linter, typecheck estrito e build | Implementado; pré-requisitos no documento 13 |
+| `make security` | `scripts/security/check.sh`: coordenar scripts mínimos de segurança definidos no documento 09 | Implementado; pré-requisitos no documento 13 |
+| `make integration` | `scripts/test/backend-integration.sh`: wrapper que exige suíte real do backend; suíte/ambiente ainda ausentes | Implementado; pré-requisitos no documento 13 |
+| `make taskPlan TARGET=develop` | `scripts/tasks/plan.sh`: impacto e contexto mínimo | Implementado; pré-requisitos no documento 13 |
+| `make docsUpdate` | `scripts/docs/update.sh`: gerar relatório de execução e conferir documentação; texto manual não é reescrito | Implementado; pré-requisitos no documento 13 |
+| `make docsCheck` | `scripts/docs/check.sh`: verificar destinos de links locais e correspondência entre contrato HTTP e inventário | Implementado; pré-requisitos no documento 13 |
+| `make routeReport` | `scripts/metrics/route-report.sh`: agregar métricas já coletadas na integração | Implementado; pré-requisitos no documento 13 |
+| `make ci` | `scripts/ci/check.sh`: coordenar pipelineCheck, plano de impacto, check, security, integração instrumentada, routeReport e docsCheck; falhar se qualquer etapa falhar | Implementado; pré-requisitos no documento 13 |
+| `make preMerge TARGET=develop` | `scripts/git/pre-merge.sh`: validar fluxo e executar `make ci`; não faz merge | Implementado; pré-requisitos no documento 13 |
+
+Rollback de estrutura, backup e restauração permanecem sem alvos ou scripts. Não há migrations reais para validar reversão, nem backup restaurado que comprove recuperação de dados.
 
 Os alvos de coordenação aguardam todos os processos iniciados, coletam resultados e propagam falhas. Paralelizar somente jobs independentes com recursos isolados; migrations e seed respeitam ordem. Não criar um alvo que faça merge sem revisão ou pule os gates. Não existe alvo/teste de frontend no escopo atual.
 

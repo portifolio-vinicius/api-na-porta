@@ -63,11 +63,11 @@ Relatórios agrupam método, rota, cenário, status, cache, banco e perfil. Lat�
 
 O gate usa os resultados reais em `needs` e só aceita `success` para os quatro jobs obrigatórios. Cancelamento, ausência, skip e falha reprovam o gate. O uso de `always()` e dos resultados de dependências segue a [documentação do GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts).
 
-No registro anterior à publicação, não havia execução no GitHub, remoto configurado ou commit inicial neste checkout. Rulesets/proteções não podem ser confirmados localmente. Ao publicar o repositório, configurar `backend-merge-gate` como check obrigatório em develop/master e impedir bypass/push direto conforme documento 09. O workflow sozinho não configura essa proteção.
+O repositório está publicado, com `master` padrão e `develop` criada. O ruleset remoto está ativo e foi testado rejeitando push direto nas duas branches, inclusive para administrador. Configuração efetiva no [documento 09](09-ci-e-seguranca.md) e evidências de publicação, execução remota e testes no [documento 14](14-publicacao-e-protecao.md). O workflow sozinho não configura essa proteção.
 
-## Evidências locais
+## Evidências locais anteriores à publicação
 
-Execuções realizadas uma por vez:
+Registro histórico: execuções realizadas uma por vez, antes do commit inicial e da configuração das proteções. O estado posterior está no [documento 14](14-publicacao-e-protecao.md).
 
 | Comando | Resultado observado |
 | --- | --- |
@@ -81,7 +81,7 @@ Execuções realizadas uma por vez:
 | `make ci` | Reprovado; coleta as falhas e não aprova o conjunto |
 | `make preMerge TARGET=develop` | Reprovado: repositório sem commit inicial |
 
-Workflow validado com actionlint 1.7.12, sem erros; análise ShellCheck não executada. A sintaxe shell foi verificada com `bash -n`. Os cenários sintéticos rodam em diretórios temporários e não representam integração ou medições reais da API. Scanners, build e testes funcionais completos permanecem sem execução bem-sucedida até existir backend e Docker ativo.
+Workflow validado com actionlint 1.7.12, sem erros; análise ShellCheck não executada. A sintaxe shell foi verificada com `bash -n`. Os cenários sintéticos rodam em diretórios temporários e não representam integração ou medições reais da API. Na execução remota posterior, Gitleaks aprovou arquivos e histórico. Os demais scanners, build e testes funcionais completos continuam bloqueados pela ausência do backend; veja o documento 14.
 
 ## Verificação adicional: banco e worktrees
 

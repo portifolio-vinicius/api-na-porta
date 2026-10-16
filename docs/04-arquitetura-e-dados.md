@@ -26,7 +26,7 @@ database/
   prisma/schema.prisma       Fonte única do schema futuro
   prisma/migrations/         Histórico versionado futuro
   seeds/                     Carga fictícia futura
-scripts/                     Automação futura coordenada pela raiz
+scripts/                     Validações de CI implementadas; automação de ambiente futura
 docs/                        Documentação existente
 ```
 

@@ -16,6 +16,7 @@
 | [Inventário de rotas](performance/rotas.md) | Estado de medição e baseline por endpoint |
 | [12 — Verificação das esteiras](12-verificacao-das-esteiras.md) | Execução sequencial dos comandos, bloqueios observados e cenários pendentes |
 | [13 — Esteiras executáveis](13-esteiras-executaveis.md) | Comandos implementados, contrato de métricas, evidências e bloqueios atuais |
+| [14 — Publicação e proteção](14-publicacao-e-protecao.md) | Estado publicado, CI remota, testes de worktree e rejeição de push direto |
 
 ## Convenções
 
