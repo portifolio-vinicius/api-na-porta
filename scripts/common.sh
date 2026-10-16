@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
-  printf 'Uso: bash %s\nConfiguração: TARGET=develop|master; METRICS_DIR=artifacts/performance/current\nConsulte docs/13-esteiras-executaveis.md para pré-requisitos.\n' "$0"
+  printf 'Uso: bash %s\nConfiguração: TARGET=develop|master; METRICS_DIR=artifacts/performance/current\nBanco: ENV=local|test|demo; PGHOST, PGPORT, PGUSER, PGDATABASE e autenticação privados.\nConsulte docs/13-esteiras-executaveis.md e docs/15-postgresql-operacoes.md para pré-requisitos.\n' "$0"
   exit 0
 fi
 fail() { printf 'ERRO: %s\n' "$*" >&2; exit 1; }

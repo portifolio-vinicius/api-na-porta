@@ -16,9 +16,11 @@
 | [Inventário de rotas](performance/rotas.md) | Estado de medição e baseline por endpoint |
 | [12 — Verificação das esteiras](12-verificacao-das-esteiras.md) | Execução sequencial dos comandos, bloqueios observados e cenários pendentes |
 | [13 — Esteiras executáveis](13-esteiras-executaveis.md) | Comandos implementados, contrato de métricas, evidências e bloqueios atuais |
+| [14 — Publicação e proteção](14-publicacao-e-protecao.md) | Estado publicado, CI remota, testes de worktree e rejeição de push direto |
+| [15 — Operações PostgreSQL](15-postgresql-operacoes.md) | Configuração, migrations, seed, rollback, backup, restauração e integração real |
 
 ## Convenções
 
 `OBRIGATÓRIO` identifica exigência expressa no desafio ou nas instruções do usuário. `PROPOSTO` identifica uma decisão de projeto adicionada para tornar o planejamento concreto. `A CONFIRMAR` identifica informação ambígua ou ausente. Propostas não representam funcionalidades já implementadas.
 
-Os requisitos ficam no documento 02, as regras no 03, os contratos no 05 e o fluxo de branches no 06. Os arquivos `ag.md` apenas orientam a execução e apontam para essas fontes.
+Os requisitos ficam no documento 02, as regras no 03, os contratos no 05 e o fluxo de branches no 06. Os arquivos `AGENTS.md` apenas orientam a execução e apontam para essas fontes.

@@ -1,11 +1,11 @@
 # Fluxo de desenvolvimento e orchestrator
 
-Este documento define o processo futuro. Não cria repositório, branches, agentes nem automações nesta etapa.
+O repositório está publicado com `master` como branch padrão e `develop` como base de trabalho. Ambas têm proteção ativa no GitHub, descrita no [documento 09](09-ci-e-seguranca.md). Worktrees e validação do fluxo foram testados; a criação automática via `startTask` permanece pendente. Evidências em [14 — Publicação e proteção](14-publicacao-e-protecao.md).
 
 ## Branches
 
 ```text
-master                         Código aprovado para produção
+master                         Destino das versões aprovadas; base inicial ainda sem API
   └── develop                  Integração contínua das funcionalidades
         ├── feature/123-criar-pedido
         ├── feature/124-filtros-pedidos
@@ -17,9 +17,23 @@ feature/* ou fix/* → PR para develop → PR de develop para master
 
 Feature folders definem a organização de código dentro de cada componente, conforme `04-arquitetura-e-dados.md`. São independentes das branches `feature/*`. A branch `feature/124-filtros-pedidos` é apenas um exemplo de funcionalidade de filtros.
 
-Na implementação, o orchestrator cria `master` com a base inicial e `develop` a partir dela caso ainda não existam. Não renomear branches de um repositório existente sem avaliar seu histórico. Cada tarefa parte de `origin/develop` atualizado e usa ticket e descrição curtos.
+A publicação inicial criou `master` e `develop` no commit `763efbd`. Essa base contém documentação e esteiras, sem aplicação ou release produtiva aprovada. Cada nova tarefa parte de `origin/develop` atualizado e usa ticket e descrição curtos; não recriar as branches protegidas.
 
-Sem commits diretos em `master` ou `develop`. Proteção obrigatória: PR, revisão, branch atualizada e checks GitHub Actions aprovados, conforme `09-ci-e-seguranca.md`. YAML sozinho não bloqueia merge: configurar ruleset/proteção no GitHub. Se indisponível, registrar o impedimento antes de considerar o gate operacional. Correções urgentes também partem de `develop`; não há fluxo paralelo de hotfix previsto.
+Sem commits ou push diretos em `master` ou `develop`. O ruleset ativo exige PR, merge commit, branch atualizada e gate aprovado; bloqueia force push e exclusão, sem bypass. Revisão humana faz parte do processo, mas o GitHub está configurado com zero aprovações obrigatórias; detalhes no [documento 09](09-ci-e-seguranca.md). A publicação inicial antecedeu a ativação das regras; as alterações seguintes devem passar por PR. Correções urgentes também partem de `develop`; não há fluxo paralelo de hotfix previsto.
+
+## Criar tarefa com worktree
+
+Na raiz, com nome de tarefa e diretório ainda não utilizados:
+
+```sh
+git status --short
+git fetch origin
+git worktree add -b fix/002-documentar-protecoes ../naporta-fix-002 origin/develop
+cd ../naporta-fix-002
+make validateFlow TARGET=develop
+```
+
+O número e a descrição são exemplos; usar um ticket novo para outra tarefa. Se `git status --short` mostrar mudanças antes da criação, resolver essas mudanças primeiro. Desenvolver e commitar somente na branch da tarefa. Depois de `make preMerge TARGET=develop` aprovado, publicar a branch e abrir PR para develop. Enquanto o backend não existir, o pré-merge reprova; um PR em rascunho pode registrar trabalho e diagnóstico, sem autorizar integração.
 
 ## Coordenação assíncrona
 
@@ -40,7 +54,7 @@ Estados: `planejada → em andamento → em revisão → integrada`; bloqueio re
 
 ## Caminho de uma tarefa
 
-- Criação: script de tarefa confere árvore limpa, atualiza referências, valida nome, cria branch de `origin/develop` e worktree isolado.
+- Criação atual: conferir árvore limpa, executar `git fetch origin` e criar branch/worktree de `origin/develop` pelo procedimento acima. O script `startTask` ainda não existe.
 - Desenvolvimento: alteração limitada ao escopo; ajustes de requisito são registrados antes de mudar contratos.
 - Validação: `make preMerge TARGET=develop` chama os scripts de fluxo, checks estáticos, segurança e integração. O PR executa novamente os gates no GitHub Actions; validação local não substitui CI.
 - Integração: PR para `develop`, revisão, checks obrigatórios de segurança e integração aprovados no commit candidato atual e resolução de conflitos pelo responsável; validar o resultado combinado.

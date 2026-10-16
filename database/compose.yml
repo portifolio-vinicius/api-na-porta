@@ -1,0 +1,21 @@
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?Imagem PostgreSQL fixada pelo script}
+    container_name: ${DB_CONTAINER:?Nome do container obrigatório}
+    environment:
+      POSTGRES_USER: ${PGUSER:?PGUSER obrigatório}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?PGPASSWORD obrigatório}
+      POSTGRES_DB: ${PGDATABASE:?PGDATABASE obrigatório}
+    ports:
+      - '127.0.0.1:${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  postgres_data:

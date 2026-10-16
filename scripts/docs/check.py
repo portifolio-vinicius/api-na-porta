@@ -7,7 +7,7 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 errors = []
-files = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
+files = [ROOT / name for name in ("README.md", "AGENTS.md", "backend/AGENTS.md", "database/AGENTS.md")] + sorted((ROOT / "docs").rglob("*.md"))
 for path in files:
     text = re.sub(r"```.*?```", "", path.read_text(), flags=re.S)
     for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):

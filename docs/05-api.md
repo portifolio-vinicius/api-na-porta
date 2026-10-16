@@ -44,4 +44,4 @@ A resposta acrescenta `id` como UUID público, `status`, `createdAt` e `updatedA
 - Token com expiração proposta de 15 minutos; sem refresh token no escopo inicial. Logout no consumidor descarta o token, sem promessa de revogação imediata no servidor.
 - Consumidores não devem colocar tokens em URLs ou logs. Não há frontend implementado ou planejado nesta entrega.
 
-Os DTOs públicos têm tipos/interfaces verificáveis em compilação no backend. O mapeamento nunca expõe o ID integer interno. A arquitetura, o cache e a política de exceções estão em `04-arquitetura-e-dados.md`. Respostas autenticadas usam `Cache-Control: no-store` para não expor dados por caches intermediários; o cache interno em arquivos é independente.
+Na implementação, os DTOs públicos deverão ter tipos/interfaces verificáveis em compilação no backend. O mapeamento nunca expõe o ID integer interno. A arquitetura, o cache e a política de exceções estão em `04-arquitetura-e-dados.md`. Respostas autenticadas usam `Cache-Control: no-store` para não expor dados por caches intermediários; o cache interno em arquivos é independente.

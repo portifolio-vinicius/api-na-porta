@@ -18,7 +18,7 @@ O protocolo de branches permanece no documento 06 e os gates no 09. Este documen
 
 ## Seleção por impacto
 
-Script futuro `scripts/tasks/plan.sh` calcula arquivos alterados contra o merge-base da branch alvo, identifica features, contratos, banco e infraestrutura e produz plano estruturado. Tratar corretamente arquivos removidos/renomeados. Base indisponível ou impacto desconhecido exige análise completa, nunca plano vazio aprovado.
+O script implementado `scripts/tasks/plan.sh` calcula arquivos alterados contra o merge-base da branch alvo e produz plano estruturado. Usa `--no-renames`, representando renomeação como remoção e inclusão. Sempre seleciona o conjunto completo; classificação por feature e seleção incremental da tabela abaixo são evoluções planejadas. Base indisponível ou impacto desconhecido exige análise completa, nunca plano vazio aprovado.
 
 | Mudança | Trabalho adicional ao mínimo obrigatório |
 | --- | --- |
@@ -46,7 +46,7 @@ Registro futuro por tarefa: commit/base, duração, chamadas, agentes, tentativa
 
 Fontes únicas: contrato HTTP na feature da API, requisitos/regras nos documentos 02/03, decisões de arquitetura no 04 e amostras de integração nos artefatos de execução. Documentação conceitual é editada pelo responsável; conteúdo calculado é gerado por scripts, sem LLM.
 
-Scripts futuros `scripts/docs/update.sh` e `scripts/docs/check.sh`:
+Estado atual: `scripts/docs/update.sh` gera relatório de execução e chama o check; `scripts/docs/check.sh` verifica existência dos destinos de links locais e correspondência contrato/inventário. Não verifica conteúdo remoto, âncoras, todas as regras semânticas ou camelCase, nem reescreve texto manual. O plano de impacto não é consumido pelo atualizador. Requisitos adicionais para evolução desses scripts:
 
 1. Receber plano de impacto, commit e relatórios estruturados; validar schema, origem e integridade.
 2. Atualizar somente seções/tabelas afetadas; preservar texto manual e evitar alterações de formatação em arquivos não relacionados.
@@ -56,12 +56,12 @@ Scripts futuros `scripts/docs/update.sh` e `scripts/docs/check.sh`:
 
 PR que cria/remove/altera rota atualiza o inventário e seu contrato. Não gerar métricas ausentes nem reutilizar baseline como medição atual. Em PRs externos, produzir artefato/patch sem token de escrita. Não fazer commit, push ou abrir PR automaticamente; o responsável aplica e revisa a atualização na branch da tarefa.
 
-## Make futuro
+## Make implementado
 
 | Alvo | Responsabilidade |
 | --- | --- |
-| `make taskPlan TARGET=develop` | Gerar plano de impacto/contexto com scripts determinísticos |
-| `make docsUpdate` | Gerar conteúdo afetado a partir de fontes/relatórios válidos |
+| `make taskPlan TARGET=develop` | Gerar diff e plano conservador completo com scripts determinísticos |
+| `make docsUpdate` | Gerar relatório de execução e validar documentação manual |
 | `make docsCheck` | Conferir consistência documental sem modificar arquivos |
 | `make routeReport` | Agregar amostras já coletadas na integração; não disparar suíte de carga |
 
