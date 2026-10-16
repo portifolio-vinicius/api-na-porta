@@ -7,6 +7,7 @@ export interface AppConfig {
   readonly jwtIssuer: string;
   readonly jwtAudience: string;
   readonly jwtTtlSeconds: number;
+  readonly cacheDirectory: string;
 }
 
 export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
@@ -17,6 +18,7 @@ export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
   const jwtIssuer = environment.JWT_ISSUER;
   const jwtAudience = environment.JWT_AUDIENCE;
   const jwtTtlSeconds = Number(environment.JWT_TTL_SECONDS ?? '900');
+  const cacheDirectory = environment.CACHE_DIRECTORY ?? '/tmp/naporta-cache';
 
   if (!Number.isInteger(apiPort) || apiPort < 1 || apiPort > 65535) {
     throw new Error('Configuração inválida: API_PORT deve ser uma porta entre 1 e 65535.');
@@ -51,5 +53,9 @@ export function loadAppConfig(environment: NodeJS.ProcessEnv): AppConfig {
     throw new Error('Configuração inválida: DATABASE_URL deve identificar um banco PostgreSQL.');
   }
 
-  return { apiPort, databaseUrl, jwtSecret, jwtIssuer, jwtAudience, jwtTtlSeconds };
+  if (!cacheDirectory || !cacheDirectory.startsWith('/')) {
+    throw new Error('Configuração inválida: CACHE_DIRECTORY deve ser um caminho absoluto.');
+  }
+
+  return { apiPort, databaseUrl, jwtSecret, jwtIssuer, jwtAudience, jwtTtlSeconds, cacheDirectory };
 }

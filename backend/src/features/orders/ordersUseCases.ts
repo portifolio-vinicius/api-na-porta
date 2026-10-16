@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { CACHE_INTERFACE } from '../../shared/cache/cacheTypes.js';
+import type { CacheInterface } from '../../shared/cache/cacheTypes.js';
 import type { CreateOrderModel, OrderModel, UpdateOrderModel } from './orderModel.js';
 import { ORDERS_REPOSITORY } from './ordersTypes.js';
 import type { OrderFilters, OrderPage } from './ordersTypes.js';
@@ -6,7 +8,10 @@ import type { OrdersRepositoryInterface } from './ordersRepositoryInterface.js';
 
 @Injectable()
 export class OrdersUseCases {
-  constructor(@Inject(ORDERS_REPOSITORY) private readonly repository: OrdersRepositoryInterface) {}
+  constructor(
+    @Inject(ORDERS_REPOSITORY) private readonly repository: OrdersRepositoryInterface,
+    @Inject(CACHE_INTERFACE) private readonly cache: CacheInterface,
+  ) {}
 
   create(order: CreateOrderModel): Promise<OrderModel> {
     const normalized: CreateOrderModel = {
@@ -34,7 +39,22 @@ export class OrdersUseCases {
   }
 
   findActive(filters: OrderFilters): Promise<OrderPage> {
-    return this.repository.findActive(filters);
+    return this.findActiveWithCache(filters);
+  }
+
+  private async findActiveWithCache(filters: OrderFilters): Promise<OrderPage> {
+    const version = await this.repository.getCacheVersion();
+    const key = `${version}:${JSON.stringify(filters)}`;
+    let cached: OrderPage | null = null;
+    try {
+      cached = await this.cache.get<OrderPage>('orders', key);
+    } catch {
+      // Cache is optional; the repository remains the source of truth.
+    }
+    if (cached) return cached;
+    const page = await this.repository.findActive(filters);
+    await this.cache.set('orders', key, page, 60).catch(() => undefined);
+    return page;
   }
 
   update(publicId: string, changes: UpdateOrderModel): Promise<OrderModel | null> {

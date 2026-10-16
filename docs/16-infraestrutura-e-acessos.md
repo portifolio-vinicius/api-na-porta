@@ -54,7 +54,7 @@ Número inicial: duas réplicas; scripts aceitam de uma a quatro. Cada processo 
 
 A imagem deve conter Node.js com `fetch`, `/bin/sh`, `dist/main.js` relativo ao `WORKDIR`, e permitir execução com UID/GID 1000. Deve escutar em `0.0.0.0:3000`, encerrar graciosamente em SIGTERM e fornecer `/health/ready` (HTTP 200 somente quando a aplicação e o banco estiverem prontos). Esse endpoint não é publicado pelo proxy. Nenhuma migration deve rodar no bootstrap das réplicas.
 
-O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Login com Argon2id/JWT, limitação compartilhada e rotas de pedidos estão implementados; cache de arquivos continua pendente. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão executa uma consulta real ao banco.
+O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Login com Argon2id/JWT, limitação compartilhada, rotas de pedidos e cache local para listagens estão implementados; Compose dedicado e métricas continuam pendentes. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão executa uma consulta real ao banco.
 
 ## Permissões do PostgreSQL
 

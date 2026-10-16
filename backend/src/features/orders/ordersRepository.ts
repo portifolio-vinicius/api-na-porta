@@ -85,6 +85,15 @@ export class OrdersRepository implements OrdersRepositoryInterface {
     return { rows: rows.map(mapOrder), total };
   }
 
+  async getCacheVersion(): Promise<bigint> {
+    const row = await this.prisma.cacheVersion.findUnique({
+      where: { namespace: 'orders' },
+      select: { version: true },
+    });
+    if (!row) throw new Error('Versão de cache de pedidos ausente.');
+    return row.version;
+  }
+
   async updateActive(publicId: string, changes: UpdateOrderModel): Promise<OrderModel | null> {
     try {
       const updated = await this.prisma.$transaction(async (transaction) => {

@@ -1,6 +1,6 @@
 # Esteiras executáveis
 
-Implementadas em 2026-10-16 após autorização para sair da etapa documental. Bootstrap, prontidão, login JWT e todas as rotas de pedidos estão implementados; cache e integração HTTP continuam pendentes. Operações PostgreSQL reais estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
+Implementadas em 2026-10-16 após autorização para sair da etapa documental. Bootstrap, prontidão, login JWT, todas as rotas de pedidos e cache local para listagem estão implementados; Compose completo, métricas e integração HTTP continuam pendentes. Operações PostgreSQL reais estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
 
 ## Uso
 
