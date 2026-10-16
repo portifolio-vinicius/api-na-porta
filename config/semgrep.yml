@@ -1,0 +1,22 @@
+rules:
+  - id: no-eval
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Não execute entrada dinâmica como código.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: no-shell-exec
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Use spawn/execFile com argumentos e sem shell para comandos externos.
+    pattern-either:
+      - pattern: exec(...)
+      - pattern: execSync(...)
+  - id: no-unsafe-raw-query
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Use queries parametrizadas do Prisma.
+    pattern-either:
+      - pattern: $DB.$queryRawUnsafe(...)
+      - pattern: $DB.$executeRawUnsafe(...)

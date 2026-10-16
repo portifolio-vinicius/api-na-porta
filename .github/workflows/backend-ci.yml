@@ -1,0 +1,107 @@
+name: Backend CI
+on:
+  pull_request:
+    branches: [develop, master]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop, master]
+  workflow_dispatch:
+  merge_group:
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  METRICS_DIR: artifacts/performance/current
+  INTEGRATION_PROFILE: full
+jobs:
+  backend-quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+      - run: make pipelineCheck
+      - run: make taskPlan
+      - run: make check
+  backend-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+      - run: make security
+  backend-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.21.0'
+      - run: make integration
+      - name: Validate artifacts before publishing
+        id: metrics-validation
+        if: ${{ always() }}
+        run: python3 scripts/metrics/report.py --validate-only
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() && steps.metrics-validation.outcome == 'success' }}
+        with:
+          name: backend-metrics
+          path: |
+            artifacts/performance/current/manifest.json
+            artifacts/performance/current/samples.jsonl
+          if-no-files-found: error
+          retention-days: 7
+  backend-docs:
+    needs: [backend-integration]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: backend-metrics
+          path: artifacts/performance/current
+      - run: make routeReport
+        if: ${{ always() }}
+      - run: make docsCheck
+        if: ${{ always() }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: backend-route-report
+          path: |
+            artifacts/performance/current/routes.json
+            artifacts/performance/current/routes.md
+          if-no-files-found: error
+          retention-days: 7
+  backend-merge-gate:
+    needs: [backend-quality, backend-security, backend-integration, backend-docs]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Require all mandatory jobs to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/merge-gate.py

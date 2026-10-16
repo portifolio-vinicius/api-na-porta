@@ -1,0 +1,42 @@
+# Instruções locais opcionais; os três ag.md do projeto são versionados
+AGENTS.md
+
+# Dependências e arquivos gerados (Node.js / TypeScript)
+node_modules/
+dist/
+build/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Variáveis de ambiente locais; exemplos podem ser versionados
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Logs e caches locais
+*.log
+.cache/
+.npm/
+.eslintcache
+.prettiercache
+
+# Configurações locais de ferramentas e credenciais
+.idea/
+.vscode/
+.codex/
+.agents/
+.aws/
+
+# Arquivos temporários do sistema e editores
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Artefatos de execução
+artifacts/
+__pycache__/
