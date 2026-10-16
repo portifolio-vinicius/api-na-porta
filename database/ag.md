@@ -1,13 +1,16 @@
 # Instruções do banco
 
-Leia primeiro `../ag.md`. Escopo: modelo relacional, migrations, seed, backup e replicação.
+A leitura começa em [../ag.md](../ag.md). Este componente mantém modelagem, migrations, seed, backup e replicação.
 
-- Siga `../docs/04-arquitetura-e-dados.md`; preserve normalização, integridade referencial e precisão monetária.
-- Mantenha o schema Prisma e migrations em `database/prisma/` quando forem implementados; o backend consome essa única fonte.
-- Versione migrations; não altere migrations já aplicadas em ambientes compartilhados.
-- Use dados fictícios e seed idempotente somente em ambientes autorizados de desenvolvimento, teste e demonstração.
-- Nunca restaure, limpe ou sobrescreva produção com scripts de desenvolvimento.
-- Use PK/FK integer e UUID único nas entidades expostas, conforme a arquitetura.
-- Aplique migrations/seed apenas no primário; siga os contratos de inicialização e monitoramento de réplica.
-- Valide migrations, seed e replicação por integração; não crie outra suíte de testes automatizados.
-- Coordene mudanças de schema com backend e orchestrator antes de integrar.
+- A modelagem segue a [arquitetura e os contratos de dados](../docs/04-arquitetura-e-dados.md).
+- `database/prisma/` concentra schema e migrations quando implementados. O backend consome essa fonte única.
+- Migrations aplicadas permanecem imutáveis. Correções usam novas migrations versionadas.
+- PKs e FKs integer preservam relações internas. UUIDs identificam entidades públicas. Valores monetários preservam precisão decimal.
+- Mudanças de schema são coordenadas com o responsável pelo backend antes da integração.
+- Migrations e seed executam no primário. Replicação segue a ordem definida no [catálogo de ambiente](../docs/07-scripts-e-ambiente.md).
+- Seed usa dados fictícios e chaves estáveis. Repetições preservam dados externos ao conjunto.
+- Operações exigem destino explícito e ambiente autorizado. Rotinas de desenvolvimento ficam restritas a desenvolvimento, teste e demonstração.
+- Reversão de estrutura depende de plano compatível com a migration. Recuperação de dados depende de backup e restauração validados.
+- Scripts de migrations, rollback, backup e restauração permanecem pendentes, conforme o catálogo de ambiente.
+- A validação funcional de migrations, seed e replicação integra `make integration` do backend, conforme [o plano de testes](../docs/08-validacao.md).
+- Evidências informam comandos, destino técnico sanitizado, resultados e limitações reais.

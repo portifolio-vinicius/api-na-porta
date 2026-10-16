@@ -1,17 +1,17 @@
 # Instruções do backend
 
-Leia primeiro `../ag.md`. Escopo: API, autenticação, autorização, domínio de pedidos e integração com o ORM.
+A leitura começa em [../ag.md](../ag.md). Este componente mantém API, autenticação, pedidos e adaptadores de persistência.
 
-- Siga os contratos de `../docs/05-api.md` e as regras de `../docs/03-regras-de-negocio.md`.
-- Use Node.js, NestJS e Prisma conforme a arquitetura proposta; mantenha acesso ao banco neste componente.
-- Organize por feature folders e nomes em camelCase definidos em `../docs/04-arquitetura-e-dados.md`; use tipos/interfaces e TypeScript estrito.
-- Use ID integer apenas internamente e UUID nos contratos externos; mapeie DTOs explicitamente.
-- Respeite roteamento primário/réplica e limites de pool definidos na arquitetura.
-- Valide entradas, proteja as rotas de pedidos com JWT Bearer e serialize apenas campos públicos.
-- Aplique soft delete em consultas e alterações; nunca exponha credenciais ou detalhes internos de erros.
-- Implemente somente testes automatizados de integração no backend, conforme `../docs/08-validacao.md`.
-- Siga Clean Architecture: casos de uso dependem de interfaces; Prisma, cache e NestJS ficam nos adaptadores.
-- Use I/O assíncrono, cache em arquivos via interface e exceções nativas do NestJS na borda HTTP; customizadas somente para regras de negócio.
-- Centralize bootstrap/composição em `main.ts` e módulos; segredos vêm do ambiente do usuário.
-- Atualize inventário/contratos das rotas e registre latência, status e bytes pela integração conforme `../docs/11-performance-das-rotas.md`; não invente medições.
-- Coordene mudanças de contrato e schema com o orchestrator antes de integrar.
+- A implementação segue os [contratos HTTP](../docs/05-api.md), as [regras de negócio](../docs/03-regras-de-negocio.md) e a [arquitetura](../docs/04-arquitetura-e-dados.md).
+- Features agrupam seus arquivos. Tipos explícitos, camelCase e TypeScript estrito orientam o código.
+- Casos de uso dependem de interfaces. NestJS, Prisma e cache pertencem aos adaptadores.
+- IDs integer ficam na persistência. UUIDs identificam recursos públicos. DTOs definem os campos serializados.
+- Validação, JWT Bearer e soft delete preservam os contratos das rotas de pedidos.
+- Bootstrap e composição ficam em `main.ts` e módulos. Configuração validada recebe segredos do ambiente privado.
+- I/O assíncrono, cache por interface e acesso primário/réplica seguem a arquitetura.
+- Exceções HTTP usam NestJS. Exceções de domínio representam regras de negócio. Respostas de erro expõem informações sanitizadas.
+- Mudanças de contrato ou schema são coordenadas com o responsável pelo banco.
+- `make check` executa lint, typecheck e build. `make security` executa os scanners compartilhados.
+- A validação funcional usa `make integration` com API, banco e cache reais isolados, conforme [o plano de integração](../docs/08-validacao.md).
+- A integração coleta métricas reais. `make routeReport` agrega os artefatos conforme [o contrato de métricas](../docs/13-esteiras-executaveis.md).
+- Alterações de rotas atualizam contrato e inventário. `make docsCheck` confere os links e a correspondência das rotas.

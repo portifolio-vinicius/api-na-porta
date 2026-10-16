@@ -54,7 +54,7 @@ Estados: `planejada → em andamento → em revisão → integrada`; bloqueio re
 
 ## Caminho de uma tarefa
 
-- Criação atual: conferir árvore limpa, executar `git fetch origin` e criar branch/worktree de `origin/develop` pelos comandos abaixo. O script `startTask` ainda não existe.
+- Criação atual: conferir árvore limpa, executar `git fetch origin` e criar branch/worktree de `origin/develop` pelo procedimento acima. O script `startTask` ainda não existe.
 - Desenvolvimento: alteração limitada ao escopo; ajustes de requisito são registrados antes de mudar contratos.
 - Validação: `make preMerge TARGET=develop` chama os scripts de fluxo, checks estáticos, segurança e integração. O PR executa novamente os gates no GitHub Actions; validação local não substitui CI.
 - Integração: PR para `develop`, revisão, checks obrigatórios de segurança e integração aprovados no commit candidato atual e resolução de conflitos pelo responsável; validar o resultado combinado.
