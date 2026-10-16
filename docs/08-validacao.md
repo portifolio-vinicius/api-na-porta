@@ -4,7 +4,7 @@
 
 Somente testes de integração no backend nesta entrega. Não há frontend e não haverá suíte E2E de navegador agora. Se o frontend voltar ao escopo, seus testes deverão ser E2E com API real, mediante atualização deste plano. Não criar testes unitários, snapshots ou suítes isoladas de componentes, contrato, carga ou banco.
 
-Ferramentas propostas: Jest/Supertest, versões a definir. Integração sobe NestJS, PostgreSQL, migrations e adapter de cache em arquivos reais e isolados, sem mock de ORM/banco. Perfil de replicação usa standby real. Linter, typecheck, build e scanners de segurança são checks, não novas categorias de testes funcionais.
+Ferramentas propostas: Jest/Supertest, versões a definir. Integração sobe NestJS, PostgreSQL, migrations e adapter de cache em arquivos reais e isolados, sem mock de ORM/banco. Perfil de replicação usa standby real. Linter, typecheck, build e scanners de segurança são checks, não novas categorias de testes funcionais. As operações PostgreSQL têm integração real em `backend/test/integration/databaseOperations.py`, executada por `make dbIntegration` e pelo wrapper `make integration`. A suíte HTTP NestJS/Jest continua pendente.
 
 ## Integração obrigatória antes de merge
 
@@ -37,10 +37,10 @@ GitHub Actions chama os mesmos Make/scripts locais, conforme `09-ci-e-seguranca.
 ## Base documental e operacional atual
 
 - Requisitos, regras e contratos organizados com backend e banco como componentes ativos.
-- Exatamente três ag.md complementares: raiz, backend e database.
+- Exatamente três AGENTS.md complementares: raiz, backend e database.
 - IDs integer/UUID, camelCase, feature folders, JWT, Clean Architecture, async, cache em arquivos, configuração privada e exceções definidos.
 - Fluxo de branches, Make/scripts, Compose, replicação e gates GitHub Actions descritos.
-- Aplicação, Compose e migrations permanecem pendentes. Makefile, workflow e scripts de CI foram implementados após autorização do usuário; evidências em [13 — Esteiras executáveis](13-esteiras-executaveis.md).
+- Aplicação e replicação permanecem pendentes. Compose PostgreSQL, migration SQL inicial e scripts operacionais existem; testes reais em [operações PostgreSQL](15-postgresql-operacoes.md). Makefile, workflow e scripts de CI foram implementados após autorização do usuário; evidências em [13 — Esteiras executáveis](13-esteiras-executaveis.md).
 
 ## Aceite futuro
 

@@ -16,7 +16,7 @@ Verificação local realizada em 2026-10-16. Os comandos abaixo foram executados
 | 6 | `make ci` | 2 | Alvo `ci` inexistente |
 | 7 | `make preMerge TARGET=develop` | 2 | Alvo `preMerge` inexistente |
 
-Todos retornaram `make: *** No rule to make target '<alvo>'. Stop.` Não há Makefile, diretório `scripts/`, `.github/` ou `package.json` na raiz. Os componentes backend e database contêm apenas suas instruções `ag.md`. `git remote -v` não retornou remotos configurados; a branch local indicada foi `main`.
+Todos retornaram `make: *** No rule to make target '<alvo>'. Stop.` Não há Makefile, diretório `scripts/`, `.github/` ou `package.json` na raiz. Os componentes backend e database contêm apenas suas instruções `AGENTS.md`. `git remote -v` não retornou remotos configurados; a branch local indicada foi `main`.
 
 **Conclusão:** nenhuma esteira está operacional neste checkout. A execução foi interrompida antes de qualquer linter, scanner, integração ou agregação de resultados. O código não zero observado é falha de preparação do projeto; não comprova que os gates previstos propagam falhas corretamente. Não houve execução remota de GitHub Actions nem verificação de proteção de branches.
 

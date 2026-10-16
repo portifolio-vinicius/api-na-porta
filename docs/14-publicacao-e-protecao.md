@@ -1,6 +1,6 @@
 # Publicação e verificação das proteções
 
-Estado verificado em 2026-10-16 no [repositório api-na-porta](https://github.com/portifolio-vinicius/api-na-porta). Configuração efetiva das regras no [documento 09](09-ci-e-seguranca.md); procedimento de trabalho no [documento 06](06-fluxo-de-desenvolvimento.md). Os documentos 12 e a seção histórica do 13 descrevem etapas anteriores, sem substituir este registro posterior.
+Registro da publicação e proteção anterior à implementação dos scripts de banco. O estado posterior de PostgreSQL está no [documento 15](15-postgresql-operacoes.md). Estado verificado em 2026-10-16 no [repositório api-na-porta](https://github.com/portifolio-vinicius/api-na-porta). Configuração efetiva das regras no [documento 09](09-ci-e-seguranca.md); procedimento de trabalho no [documento 06](06-fluxo-de-desenvolvimento.md). Os documentos 12 e a seção histórica do 13 descrevem etapas anteriores, sem substituir este registro posterior.
 
 ## Publicação
 
@@ -46,7 +46,7 @@ Os hashes remotos foram comparados antes/depois e permaneceram iguais. O usuári
 
 Bloqueio de force push, exclusão e método de merge foi confirmado pela configuração remota, sem tentar excluir ou reescrever branches. Não houve teste de merge bem-sucedido de PR, porque o gate atual está reprovado.
 
-## Pendências explícitas
+## Pendências no momento desse registro histórico
 
 - Backend, schema, migrations, Compose e instrumentação HTTP não implementados.
 - Rollback de estrutura, backup e restauração não implementados nem validados com dados reais.

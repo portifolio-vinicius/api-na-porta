@@ -1,6 +1,6 @@
 # Esteiras executáveis
 
-Implementadas em 2026-10-16 após autorização para sair da etapa documental. O backend continua pendente; criar a esteira não implementa a API. Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
+Implementadas em 2026-10-16 após autorização para sair da etapa documental. O backend HTTP continua pendente; operações PostgreSQL reais foram adicionadas posteriormente e estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
 
 ## Uso
 
@@ -40,7 +40,7 @@ make docsCheck
 | `validateFlow` | Exige commit, árvore limpa, branch/destino válidos e ancestralidade da referência remota local |
 | `preMerge` | Valida fluxo e executa CI; referência remota deve ser atualizada pelo responsável antes da execução |
 
-O backend deve fornecer `backend/package.json`, `backend/package-lock.json`, `backend/src`, `backend/test` e `backend/Dockerfile`. A suíte `test:integration` deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não implementa esse ambiente nem permite substituir esses testes por mocks. Geração do Prisma, quando necessária, deve ser explicitamente incorporada ao build/preparo do backend; instalação de dependências não executa scripts de terceiros automaticamente.
+O backend deve fornecer `backend/package.json`, `backend/package-lock.json`, `backend/src`, `backend/test` e `backend/Dockerfile`. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP pelo wrapper `make integration`. A futura suíte `test:integration` deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não implementa esse ambiente nem permite substituir esses testes por mocks. Geração do Prisma, quando necessária, deve ser explicitamente incorporada ao build/preparo do backend; instalação de dependências não executa scripts de terceiros automaticamente.
 
 Segurança: npm audit inclui dependências de desenvolvimento e bloqueia high/critical; Gitleaks verifica arquivos e histórico disponível com saída redigida; Semgrep usa regras locais para execução dinâmica, shell e queries inseguras; Trivy verifica configuração e imagem construída. Gitleaks 8.30.1, Semgrep 1.181.0 e Trivy 0.76.0 usam imagens fixadas por digest. Regras SAST iniciais têm cobertura limitada e devem ser ampliadas conforme o código surgir. Falha de ferramenta, download ou pré-requisito reprova a etapa. O scan de imagem não monta o socket Docker no scanner.
 
@@ -83,10 +83,10 @@ Registro histórico: execuções realizadas uma por vez, antes do commit inicial
 
 Workflow validado com actionlint 1.7.12, sem erros; análise ShellCheck não executada. A sintaxe shell foi verificada com `bash -n`. Os cenários sintéticos rodam em diretórios temporários e não representam integração ou medições reais da API. Na execução remota posterior, Gitleaks aprovou arquivos e histórico. Os demais scanners, build e testes funcionais completos continuam bloqueados pela ausência do backend; veja o documento 14.
 
-## Verificação adicional: banco e worktrees
+## Registro histórico anterior aos scripts PostgreSQL: banco e worktrees
 
 Após a execução acima, foram tentados separadamente `make migrate ENV=local`, `make rollback ENV=local`, `make backup ENV=local`, `make restore ENV=local` e `make startTask TYPE=feature TICKET=124 NAME=filtros-pedidos`. Todos retornaram código 2 por alvo inexistente. Não há schema, migrations, scripts de backup/restauração ou automação de criação de worktrees implementados. Não foram testadas alteração real de modelagem, reversão de estrutura ou recuperação de dados. Backup sem restauração validada não comprova recuperação.
 
 O script existente `validate-flow.sh` foi exercitado em repositório Git e remoto bare locais descartáveis, com worktree real criado por comando Git manual. Oito verificações passaram: feature limpa para develop; isolamento de alterações nos arquivos; bloqueio de árvore suja; bloqueio de destino inválido; bloqueio de feature para master; bloqueio de develop para develop; aceitação de develop para master com ancestralidade válida; remoção do worktree limpo preservando o repositório base.
 
-Essa verificação não exercitou `startTask`, PRs, proteção de branches, conflitos de merge ou recuperação após falha na criação de worktree. O fluxo automatizado completo de desenvolvimento permanece pendente. As oito verificações de Git/worktree agora integram `make pipelineCheck`, totalizando 58 verificações reproduzíveis.
+Essa verificação não exercitou `startTask`, PRs, proteção de branches, conflitos de merge ou recuperação após falha na criação de worktree. O fluxo automatizado completo de desenvolvimento permanece pendente. As oito verificações de Git/worktree agora integram `make pipelineCheck`, totalizando 58 verificações naquele registro. A versão atual acrescenta checks dos scripts PostgreSQL; a contagem é emitida por `make pipelineCheck`.

@@ -53,6 +53,14 @@ jobs:
         with:
           node-version: '24.21.0'
       - run: make integration
+      - name: Publish sanitized PostgreSQL integration result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-postgres-integration
+          path: artifacts/database-integration.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Validate artifacts before publishing
         id: metrics-validation
         if: ${{ always() }}

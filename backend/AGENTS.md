@@ -1,6 +1,6 @@
 # Instruções do backend
 
-A leitura começa em [../ag.md](../ag.md). Este componente mantém API, autenticação, pedidos e adaptadores de persistência.
+A leitura começa em [../AGENTS.md](../AGENTS.md). Este componente mantém API, autenticação, pedidos e adaptadores de persistência.
 
 - A implementação segue os [contratos HTTP](../docs/05-api.md), as [regras de negócio](../docs/03-regras-de-negocio.md) e a [arquitetura](../docs/04-arquitetura-e-dados.md).
 - Features agrupam seus arquivos. Tipos explícitos, camelCase e TypeScript estrito orientam o código.

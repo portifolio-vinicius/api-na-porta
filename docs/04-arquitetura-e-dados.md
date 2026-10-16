@@ -24,13 +24,14 @@ backend/
   test/integration/
 database/
   prisma/schema.prisma       Fonte única do schema futuro
-  prisma/migrations/         Histórico versionado futuro
-  seeds/                     Carga fictícia futura
+  prisma/migrations/         Histórico SQL versionado implementado
+  seeds/                     Seed fictício de pedido implementado
+  compose.yml                PostgreSQL local implementado
 scripts/                     Validações de CI implementadas; automação de ambiente futura
 docs/                        Documentação existente
 ```
 
-Somente os diretórios com documentação existem nesta etapa. O exemplo não obriga criar arquivos sem responsabilidade concreta.
+Scripts, migration SQL inicial, seed e Compose do banco estão implementados. A estrutura de aplicação e `schema.prisma` permanecem futuros. O executor nativo e a integração futura com Prisma seguem a decisão do [documento 15](15-postgresql-operacoes.md).
 
 Nomenclatura confirmada: nome da feature concatenado à responsabilidade em camelCase (primeira palavra minúscula e palavras seguintes com inicial maiúscula), sem ponto, hífen ou underscore entre eles. Apenas a extensão mantém o ponto. Para `auth`: `authController.ts`, `authSevice.ts`, `authUseCases.ts`, `authRepository.ts` e `authModel.ts`. A grafia `sevice` segue literalmente o exemplo solicitado pelo usuário e é o sufixo adotado para services.
 
@@ -85,7 +86,7 @@ Para consistência entre instâncias, proposta: tabela `cache_versions` no prim�
 
 Volumes de cache locais por instância no perfil escalado, com a mesma política de versionamento; não depender de locks entre hosts ou volume de filesystem compartilhado para consistência. O cache não armazena sessão nem contadores de segurança. Limitação distribuída de login usa adapter próprio, com proposta de contadores atômicos no primário, sem Redis.
 
-## Modelo relacional proposto
+## Modelo relacional inicial
 
 | Tabela | Campos principais | Relações e restrições |
 | --- | --- | --- |

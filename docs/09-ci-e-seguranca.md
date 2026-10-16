@@ -42,7 +42,7 @@ Jobs independentes podem executar em paralelo com ambientes isolados; o gate dep
 
 Aplicar o documento 10 para contexto mínimo, plano de impacto e geração determinística. Mínimos obrigatórios continuam executados; não reduzir segurança para economizar tokens ou tempo. Não há chamada de LLM no caminho normal da CI.
 
-Quando a suíte do backend existir, deverá coletar métricas de rota na própria execução; essa coleta ainda não está implementada. Job `backend-docs` agrega artefatos e valida contrato/inventário conforme documento 11; depende dos dados da integração, sem disparar testes novamente. Em falha, manter gate reprovado. O agregador escreve diagnóstico incompleto quando o diretório de métricas existe; se o diretório também estiver ausente, pode não haver artefato de diagnóstico para publicar. Job Summary apresenta síntese; detalhes ficam em artefatos sanitizados. Não fazer commit/push automático da documentação a cada run.
+`make integration` primeiro valida as operações PostgreSQL reais e publica um resultado técnico sanitizado. Quando a suíte HTTP do backend existir, deverá coletar métricas de rota na própria execução; essa coleta ainda não está implementada. Job `backend-docs` agrega artefatos e valida contrato/inventário conforme documento 11; depende dos dados da integração, sem disparar testes novamente. Em falha, manter gate reprovado. O agregador escreve diagnóstico incompleto quando o diretório de métricas existe; se o diretório também estiver ausente, pode não haver artefato de diagnóstico para publicar. Job Summary apresenta síntese; detalhes ficam em artefatos sanitizados. Não fazer commit/push automático da documentação a cada run.
 
 ## Scripts mínimos de segurança
 
@@ -55,7 +55,7 @@ Quando a suíte do backend existir, deverá coletar métricas de rota na própri
 | `scripts/security/source.sh` | SAST TypeScript com regras de segurança versionadas; Semgrep com regras iniciais locais | Achados de severidade alta/crítica segundo política mapeada da ferramenta |
 | `scripts/security/container.sh` | Scan do Dockerfile e da imagem construída; Trivy | Vulnerabilidades high/critical e configurações inseguras bloqueadoras |
 
-Scanners estão fixados por versão e digest nos scripts, regras SAST estão versionadas e actions usam SHA. Scanner indisponível, relatório ausente, erro de execução ou download não vira sucesso. Não aplicar correções automáticas irrestritas nem ignorar arquivos/dependências inteiras para passar. Exceção de risco somente se explícita, revisada, com responsável, motivo e expiração; nenhuma exceção é presumida por este plano.
+O scanner de segredos monta também o diretório Git comum em leitura para consultar o histórico de linked worktrees. Scanners estão fixados por versão e digest nos scripts, regras SAST estão versionadas e actions usam SHA. Scanner indisponível, relatório ausente, erro de execução ou download não vira sucesso. Não aplicar correções automáticas irrestritas nem ignorar arquivos/dependências inteiras para passar. Exceção de risco somente se explícita, revisada, com responsável, motivo e expiração; nenhuma exceção é presumida por este plano.
 
 Scanners estáticos/de dependências não são suítes de testes funcionais adicionais. Testes de autenticação, validação, erros sanitizados e cache continuam na integração do backend.
 

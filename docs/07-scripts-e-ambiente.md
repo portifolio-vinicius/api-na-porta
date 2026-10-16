@@ -1,6 +1,6 @@
 # Make, scripts e ambiente local
 
-Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Os alvos de ambiente, branches de tarefa e banco da tabela continuam futuros; não há Compose. Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
+Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Há Compose do banco e scripts PostgreSQL. Ambiente completo com API, criação automática de branches e replicação continuam futuros; detalhes no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
 
 ## Catálogo de comandos e estado
 
@@ -12,12 +12,12 @@ Os alvos de validação/CI e seus scripts foram implementados; execução e pré
 | `make up` | `scripts/dev/up.sh`: validar ambiente, subir banco, migrations, seed, volume de cache e API | Planejado; alvo/script ausentes |
 | `make down` | `scripts/dev/down.sh`: parar preservando volumes | Planejado; alvo/script ausentes |
 | `make logs SERVICE=api` | `scripts/dev/logs.sh`: logs sem despejar configuração | Planejado; alvo/script ausentes |
-| `make migrate ENV=local` | `scripts/db/migrate.sh`: migrations no destino permitido | Planejado; alvo/script ausentes |
-| `make seed ENV=local` | `scripts/db/seed.sh`: carga fictícia idempotente | Planejado; alvo/script ausentes |
+| `make migrate ENV=local` | `scripts/db/migrate.sh`: migrations no destino permitido | Implementado; PostgreSQL nativo, documento 15 |
+| `make seed ENV=local` | `scripts/db/seed.sh`: carga fictícia idempotente | Implementado; PostgreSQL nativo, documento 15 |
 | `make scale API_INSTANCES=2` | `scripts/dev/scale.sh`: perfil escalado, pools e réplica | Planejado; alvo/script ausentes |
 | `make replicaInit ENV=local` | `scripts/db/replica-init.sh`: base backup e standby vazio | Planejado; alvo/script ausentes |
 | `make replicaStatus ENV=local` | `scripts/db/replica-status.sh`: estado e lag sem segredos | Planejado; alvo/script ausentes |
-| `make pipelineCheck` | `scripts/ci/validate.py`: validar as próprias esteiras com fixtures descartáveis | Implementado; 58 verificações |
+| `make pipelineCheck` | `scripts/ci/validate.py`: validar as próprias esteiras com fixtures descartáveis | Implementado; contagem corrente emitida pelo comando |
 | `make check` | `scripts/check.sh`: linter, typecheck estrito e build | Implementado; pré-requisitos no documento 13 |
 | `make security` | `scripts/security/check.sh`: coordenar scripts mínimos de segurança definidos no documento 09 | Implementado; pré-requisitos no documento 13 |
 | `make integration` | `scripts/test/backend-integration.sh`: wrapper que exige suíte real do backend; suíte/ambiente ainda ausentes | Implementado; pré-requisitos no documento 13 |
@@ -28,7 +28,18 @@ Os alvos de validação/CI e seus scripts foram implementados; execução e pré
 | `make ci` | `scripts/ci/check.sh`: coordenar pipelineCheck, plano de impacto, check, security, integração instrumentada, routeReport e docsCheck; falhar se qualquer etapa falhar | Implementado; pré-requisitos no documento 13 |
 | `make preMerge TARGET=develop` | `scripts/git/pre-merge.sh`: validar fluxo e executar `make ci`; não faz merge | Implementado; pré-requisitos no documento 13 |
 
-Rollback de estrutura, backup e restauração permanecem sem alvos ou scripts. Não há migrations reais para validar reversão, nem backup restaurado que comprove recuperação de dados.
+Operações adicionais implementadas:
+
+| Comando | Responsabilidade |
+| --- | --- |
+| `make dbUp` / `make dbDown` | Subir/parar somente PostgreSQL local preservando o volume |
+| `make dbStatus` | Consultar histórico aplicado |
+| `make backup` | Exportar dump custom e manifesto de integridade privados |
+| `make rollback` | Reverter última migration com plano e backup compatíveis |
+| `make restore` | Restaurar dump confiável em destino vazio |
+| `make dbIntegration` | Validar operações reais em recursos descartáveis |
+
+Configuração, confirmações e limites ficam no documento 15. Replicação, PITR e ambiente completo da API permanecem planejados.
 
 Os alvos de coordenação aguardam todos os processos iniciados, coletam resultados e propagam falhas. Paralelizar somente jobs independentes com recursos isolados; migrations e seed respeitam ordem. Não criar um alvo que faça merge sem revisão ou pule os gates. Não existe alvo/teste de frontend no escopo atual.
 
@@ -40,6 +51,8 @@ Volume nomeado de cache montado no caminho interno `CACHE_DIRECTORY`, separado d
 
 ## Ambiente do usuário e segredos
 
+As operações PostgreSQL atuais usam variáveis `PG*` exportadas e o contrato do documento 15. `USER_ENV_FILE` e as opções de configuração da API abaixo permanecem propostas para o ambiente completo.
+
 Fonte padrão: variáveis exportadas pelo usuário no processo que inicia Make/Compose. Opcionalmente, arquivo privado fora do repositório, como `~/.config/naporta/user.env`, selecionado por `USER_ENV_FILE`. O script passa esse caminho explicitamente a `docker compose --env-file`; não interpreta o arquivo como comandos shell. Restringir permissões do arquivo. `.env.example` futuro contém somente nomes/placeholders.
 
 Compose deve declarar a passagem de cada variável necessária ao serviço via `environment`/interpolação e exigir valores obrigatórios, sem defaults inseguros. Ter a variável no shell ou no arquivo de interpolação não a disponibiliza automaticamente dentro do container. Definir precedência documentada: ambiente exportado pelo usuário prevalece sobre arquivo privado. Não imprimir `docker compose config` resolvido em logs, pois pode revelar segredos. [Referência Docker Compose](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/).
@@ -48,7 +61,9 @@ Configuração proposta: `DATABASE_URL`, credenciais do PostgreSQL por serviço,
 
 Segredos somente nos serviços que os usam, sem build args, Dockerfile, Git ou logs. Backend valida configuração no bootstrap. Na CI, testes usam credenciais efêmeras fictícias geradas no runner; segredos reais ficam em GitHub Secrets/Environments quando necessários em fases futuras, sem serem expostos a PRs externos.
 
-## Seed e carga inicial
+## Seed e carga inicial planejados
+
+O seed atual cria somente um pedido fictício com relações; usuário de demonstração e demais cenários abaixo permanecem futuros.
 
 Conjunto determinístico fictício: usuário de demonstração, pedidos nos status previstos, limites de datas, múltiplos itens, zeros iniciais e soft delete. Senha fornecida por configuração, armazenada como hash e não impressa. Seed transacional/idempotente por chaves estáveis, sem alterar dados fora do conjunto e sem limpeza global; rejeita produção. Fixtures de integração são independentes.
 

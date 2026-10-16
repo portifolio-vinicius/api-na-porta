@@ -1,6 +1,6 @@
 # Instruções gerais
 
-A raiz define o processo comum. `backend/ag.md` e `database/ag.md` definem responsabilidades locais. O projeto mantém esses três arquivos com o nome `ag.md`.
+A raiz define o processo comum. `backend/AGENTS.md` e `database/AGENTS.md` definem responsabilidades locais. O projeto mantém esses três arquivos com o nome `AGENTS.md`.
 
 - A leitura começa em [docs/README.md](docs/README.md) e nos trechos relacionados à tarefa.
 - Requisitos e decisões têm fonte única em `docs/`. As instruções apontam para essas fontes.

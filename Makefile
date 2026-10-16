@@ -1,12 +1,12 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 TARGET ?= develop
-export TARGET
+export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR
 .PHONY: pipelineCheck help check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow
 pipelineCheck:
 	@python3 scripts/ci/validate.py
 help:
-	@printf '%s\n' 'pipelineCheck check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow' 'TARGET=develop|master; METRICS_DIR=artifacts/performance/current'
+	@printf '%s\n' 'dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration' 'pipelineCheck check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow' 'TARGET=develop|master; METRICS_DIR=artifacts/performance/current'
 check:
 	@bash scripts/check.sh
 security:
@@ -27,3 +27,23 @@ preMerge:
 	@bash scripts/git/pre-merge.sh
 validateFlow:
 	@bash scripts/git/validate-flow.sh
+
+.PHONY: dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration
+migrate:
+	@bash scripts/db/migrate.sh
+rollback:
+	@bash scripts/db/rollback.sh
+backup:
+	@bash scripts/db/backup.sh
+restore:
+	@bash scripts/db/restore.sh
+seed:
+	@bash scripts/db/seed.sh
+dbStatus:
+	@bash scripts/db/status.sh
+dbIntegration:
+	@bash scripts/test/database-integration.sh
+dbUp:
+	@bash scripts/db/up.sh
+dbDown:
+	@bash scripts/db/down.sh
