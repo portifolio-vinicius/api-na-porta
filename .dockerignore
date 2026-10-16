@@ -1,0 +1,17 @@
+.git
+**/AGENTS.md
+.agents
+.codex
+.aws
+.idea
+.vscode
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/__pycache__
+artifacts
+**/.env
+**/.env.*
+**/*.log
+**/.DS_Store
