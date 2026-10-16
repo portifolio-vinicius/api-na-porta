@@ -3,7 +3,7 @@
 - **Branch:** `feature/004-backend-foundation`
 - **Base:** `origin/develop` em `939c42c`
 - **Responsável:** orchestrator (Codex)
-- **Status:** em andamento
+- **Status:** em revisão
 - **PR:** ainda não aberto
 
 ## Objetivo
@@ -36,7 +36,8 @@ Implementar o primeiro bloco executável do backend: bootstrap NestJS em TypeScr
 
 ## Validação e evidências
 
-- **Planejada:** `make check`, `make docsCheck` e revisão do diff.
+- **Aprovado:** `make check` (lint, geração Prisma, typecheck e build); `npm --prefix backend audit` (0 vulnerabilidades); `make docsCheck` (25 arquivos, 0 erros); `git diff --check`.
+- **Não executado:** integração HTTP (a suíte obrigatória ainda não existe), validação Swarm e build/scan da imagem do backend.
 - **Integração HTTP:** pendente para as próximas tarefas; o gate `make integration` continua reprovado até existir a suíte obrigatória.
 - **Scripts de criação de branch/worktree:** `make startTask` / `scripts/git/start-task.sh` ainda ausentes; branch criada manualmente a partir de `origin/develop`.
 - **PR:** pendente.
@@ -44,3 +45,4 @@ Implementar o primeiro bloco executável do backend: bootstrap NestJS em TypeScr
 ## Histórico incremental
 
 - 2026-10-16: tarefa registrada na branch `feature/004-backend-foundation`, baseada em `origin/develop`.
+- 2026-10-16: bootstrap NestJS, schema Prisma mapeado, prontidão PostgreSQL e Dockerfile implementados; autenticação e pedidos permanecem em tarefas posteriores.

@@ -2,13 +2,15 @@
 
 ## Separação e feature folders
 
-Organização confirmada por funcionalidade no backend. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura futura ilustrativa:
+Organização confirmada por funcionalidade. A fundação inicial NestJS, validação de configuração, prontidão PostgreSQL e adapter Prisma estão implementados; autenticação, pedidos e cache continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
 
 ```text
 backend/
   src/main.ts                Bootstrap e composição da aplicação
   src/appModule.ts           Módulo raiz e registro de dependências
-  src/features/orders/
+  src/features/health/
+    healthController.ts
+  src/features/orders/         Pendente
     ordersModule.ts
     ordersController.ts
     ordersUseCases.ts
@@ -17,13 +19,13 @@ backend/
     orderModel.ts
     ordersTypes.ts
     ordersDto.ts
-  src/features/auth/          Mesma convenção de responsabilidades
-  src/shared/cache/          cacheInterface.ts e fileCacheAdapter.ts
-  src/shared/config/         Leitura e validação da configuração
-  src/shared/                Infraestrutura realmente compartilhada
-  test/integration/
+  src/features/auth/           Pendente
+  src/shared/cache/            Pendente
+  src/shared/config/           appConfig.ts implementado
+  src/shared/database/         prismaService.ts implementado
+  test/integration/            Integração HTTP pendente
 database/
-  prisma/schema.prisma       Fonte única do schema futuro
+  prisma/schema.prisma       Mapeamento Prisma implementado
   prisma/migrations/         Histórico SQL versionado implementado
   seeds/                     Seed fictício de pedido implementado
   compose.yml                PostgreSQL local implementado
@@ -31,7 +33,7 @@ scripts/                     Validações de CI implementadas; automação de am
 docs/                        Documentação existente
 ```
 
-Scripts, migration SQL inicial, seed e Compose do banco estão implementados. A estrutura de aplicação e `schema.prisma` permanecem futuros. O executor nativo e a integração futura com Prisma seguem a decisão do [documento 15](15-postgresql-operacoes.md).
+Scripts, migration SQL inicial, seed, Compose do banco e schema Prisma estão implementados. O Prisma 7 gera o client no build e usa adapter PostgreSQL com limite de dez conexões e timeout de conexão de cinco segundos. O executor nativo SQL permanece o único executor de migrations; não gerar nem aplicar migrations pelo Prisma Migrate. Ver [decisão e limites](15-postgresql-operacoes.md).
 
 Nomenclatura confirmada: nome da feature concatenado à responsabilidade em camelCase (primeira palavra minúscula e palavras seguintes com inicial maiúscula), sem ponto, hífen ou underscore entre eles. Apenas a extensão mantém o ponto. Para `auth`: `authController.ts`, `authSevice.ts`, `authUseCases.ts`, `authRepository.ts` e `authModel.ts`. A grafia `sevice` segue literalmente o exemplo solicitado pelo usuário e é o sufixo adotado para services.
 
@@ -56,7 +58,7 @@ Manter nomes claros, funções focadas, regras em uma única fonte e mapeamentos
 
 ## Bootstrap, configuração e main
 
-`backend/src/main.ts` é o ponto de entrada: carregar/validar configuração, criar aplicação, aplicar pipes globais, configuração de erros HTTP, CORS, logging seguro, shutdown hooks e iniciar servidor. Módulos registram adapters e casos de uso por injeção. Não concentrar regras de negócio, consultas ou credenciais em `main.ts`.
+`backend/src/main.ts` é o ponto de entrada implementado: carregar/validar `API_PORT` e `DATABASE_URL`, criar aplicação, excluir prontidão do prefixo `/api/v1`, registrar shutdown hooks e iniciar em `0.0.0.0`. `/health/ready` consulta o primário e responde 503 sem expor detalhes em caso de falha. Pipes globais, configuração de erros, CORS e logging estruturado ficam para as próximas tarefas, antes das rotas de negócio.
 
 “Main” aqui identifica o bootstrap da aplicação. O fluxo de branches continua `develop → master`; não renomear a branch de produção sem nova instrução.
 
@@ -113,7 +115,7 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
-Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). A aplicação continua pendente.
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap da API existe; autenticação, pedidos, cache e integração HTTP continuam pendentes.
 
 
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.

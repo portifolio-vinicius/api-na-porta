@@ -2,7 +2,7 @@
 
 Nginx, escala Swarm e scripts de permissões estão implementados; veja [infraestrutura e acessos](16-infraestrutura-e-acessos.md).
 
-Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Há Compose do banco e scripts PostgreSQL. Ambiente completo com API, criação automática de branches e replicação continuam futuros; detalhes no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
+Os alvos de validação/CI e seus scripts foram implementados; execução e pré-requisitos estão em [13 — Esteiras executáveis](13-esteiras-executaveis.md). Há Compose do banco e scripts PostgreSQL. A API tem bootstrap, prontidão e Dockerfile; ambiente Compose completo, criação automática de branches e replicação continuam futuros; detalhes do banco no [documento 15](15-postgresql-operacoes.md). Make é a entrada das validações implementadas e será também a entrada dos comandos de ambiente; receitas curtas chamam scripts compartilhados com CI, sem duplicar lógica. Cada script fornece ajuda, valida pré-requisitos e parâmetros, não imprime segredos e propaga código de saída não zero em falhas.
 
 ## Catálogo de comandos e estado
 
@@ -20,7 +20,7 @@ Os alvos de validação/CI e seus scripts foram implementados; execução e pré
 | `make replicaInit ENV=local` | `scripts/db/replica-init.sh`: base backup e standby vazio | Planejado; alvo/script ausentes |
 | `make replicaStatus ENV=local` | `scripts/db/replica-status.sh`: estado e lag sem segredos | Planejado; alvo/script ausentes |
 | `make pipelineCheck` | `scripts/ci/validate.py`: validar as próprias esteiras com fixtures descartáveis | Implementado; contagem corrente emitida pelo comando |
-| `make check` | `scripts/check.sh`: linter, typecheck estrito e build | Implementado; pré-requisitos no documento 13 |
+| `make check` | `scripts/check.sh`: linter, geração do Prisma Client, typecheck estrito e build | Implementado; pré-requisitos no documento 13 |
 | `make security` | `scripts/security/check.sh`: coordenar scripts mínimos de segurança definidos no documento 09 | Implementado; pré-requisitos no documento 13 |
 | `make integration` | `scripts/test/backend-integration.sh`: wrapper que exige suíte real do backend; suíte/ambiente ainda ausentes | Implementado; pré-requisitos no documento 13 |
 | `make taskPlan TARGET=develop` | `scripts/tasks/plan.sh`: impacto e contexto mínimo | Implementado; pré-requisitos no documento 13 |
@@ -42,6 +42,8 @@ Operações adicionais implementadas:
 | `make dbIntegration` | Validar operações reais em recursos descartáveis |
 
 Configuração, confirmações e limites ficam no documento 15. Replicação, PITR e ambiente completo da API permanecem planejados.
+
+Para iniciar o bootstrap local sem Make, configure `DATABASE_URL` no ambiente do usuário, gere o build e execute `npm --prefix backend start`. O processo não executa migrations ou seed. `/health/ready` fica fora do prefixo `/api/v1` e consulta o banco antes de responder 200; indisponibilidade retorna 503. `make dbUp` sobe somente PostgreSQL. O Compose que encadeia banco, migrations, seed e API continua planejado.
 
 Os alvos de coordenação aguardam todos os processos iniciados, coletam resultados e propagam falhas. Paralelizar somente jobs independentes com recursos isolados; migrations e seed respeitam ordem. Não criar um alvo que faça merge sem revisão ou pule os gates. Não existe alvo/teste de frontend no escopo atual.
 
