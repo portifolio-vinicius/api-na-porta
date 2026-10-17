@@ -35,7 +35,8 @@ export function createHttpMetricsMiddleware(file?: string): {
       // Only known route templates are allowed to reach telemetry.
       const path: unknown = request.route?.path;
       const known = new Set(['/health/ready', '/api/v1/auth/login', '/api/v1/orders', '/api/v1/orders/:id']);
-      const route = typeof path === 'string' && known.has(path) ? path : 'unmatched';
+      const route = typeof path === 'string' && known.has(path) ? path
+        : known.has(request.path) ? request.path : 'unmatched';
       const log = { level: 'info', event: 'http_request', requestId, method: request.method, route,
         statusCode: completed ? response.statusCode : null, durationMs: performance.now() - started };
       process.stdout.write(`${JSON.stringify(log)}\n`);
