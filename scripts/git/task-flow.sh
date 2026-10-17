@@ -86,8 +86,8 @@ case "$action" in
     done < <(owned_files "$task_path")
     [[ "${#files[@]}" -gt 0 ]] || { echo 'ERRO: a tarefa precisa listar arquivos sob responsabilidade.'; exit 1; }
     for file in "${files[@]}"; do
-      [[ "$file" =~ ^[A-Za-z0-9._/-]+$ && "$file" != /* && "$file" != *..* ]] || {
-        echo 'ERRO: a lista de arquivos aceita apenas caminhos relativos simples.'; exit 1;
+      [[ "$file" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && "$file" != *..* && "/$file/" != */./* ]] || {
+        echo 'ERRO: a lista exige caminhos relativos canônicos: sem ./, //, barra final, espaços ou .. .'; exit 1;
       }
     done
     git fetch origin
@@ -106,6 +106,10 @@ case "$action" in
       while IFS= read -r reserved || [[ -n "$reserved" ]]; do
         [[ "$reserved" == file=* ]] || continue
         reserved="${reserved#file=}"
+        [[ "$reserved" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && "$reserved" != *..* && "/$reserved/" != */./* ]] || {
+          echo 'ERRO: reserva existente contém caminho não canônico; libere e registre a tarefa novamente.' >&2
+          exit 1
+        }
         for file in "${files[@]}"; do
           if paths_overlap "$file" "$reserved"; then
             other="$(basename "$record")"

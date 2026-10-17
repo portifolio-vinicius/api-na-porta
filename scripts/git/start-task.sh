@@ -26,8 +26,8 @@ files="${FILES:-}"
 
 IFS=, read -r -a file_list <<< "$files"
 for file in "${file_list[@]}"; do
-  [[ "$file" =~ ^[A-Za-z0-9._/-]+$ && "$file" != /* && "$file" != *..* ]] || {
-    echo 'ERRO: FILES aceita apenas caminhos relativos simples, sem espaços ou .. .' >&2
+  [[ "$file" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && "$file" != *..* && "/$file/" != */./* ]] || {
+    echo 'ERRO: FILES exige caminhos relativos canônicos: sem ./, //, barra final, espaços ou .. .' >&2
     exit 1
   }
 done

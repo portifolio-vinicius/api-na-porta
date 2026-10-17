@@ -137,8 +137,33 @@ with tempfile.TemporaryDirectory(prefix="naporta-pipeline-validation-") as tmp:
             "TYPE": "feature", "TICKET": "225", "NAME": "pedido-sobreposto",
             "FILES": "README.md", "WORKTREE_PATH": str(overlap),
         })
+        for index, invalid in enumerate(("./README.md", "docs//05-api.md", "docs/", ".", "docs/./05-api.md")):
+            run_task("startTask recusa caminho não canônico " + invalid,
+                     ["bash", "scripts/git/start-task.sh"], False, root, {
+                         "TYPE": "feature", "TICKET": str(330 + index), "NAME": "caminho-invalido",
+                         "FILES": invalid, "WORKTREE_PATH": str(Path(flow_tmp) / ("invalid-" + str(index))),
+                     })
+        task_file = overlap / "docs/tasks/225.md"
+        original_task = task_file.read_text()
+        for invalid in ("./README.md", "docs//05-api.md", "docs/", ".", "docs/./05-api.md"):
+            task_file.write_text(original_task.replace("- `README.md`", "- `" + invalid + "`"))
+            commit_task(overlap)
+            run_task("taskActivate recusa caminho não canônico " + invalid,
+                     ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task)
         commit_task(overlap)
         run_task("taskActivate bloqueia arquivo já reservado", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task.replace("- `README.md`", "- `docs`"))
+        commit_task(overlap)
+        run_task("taskActivate bloqueia diretório pai reservado", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task.replace("- `README.md`", "- `docs-other/05-api.md`"))
+        commit_task(overlap)
+        legacy_record = root / ".git/task-flow-active/224"
+        original_record = legacy_record.read_text()
+        legacy_record.write_text(original_record.replace("file=docs/05-api.md", "file=docs/"))
+        run_task("taskActivate recusa reserva antiga não canônica", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        legacy_record.write_text(original_record)
+        run_task("taskActivate permite prefixo sem parentesco", ["bash", "scripts/git/task-flow.sh", "activate"], True, overlap, {"TICKET": "225"})
         run_task("taskRelease mantém a reserva antes do merge", ["bash", "scripts/git/task-flow.sh", "release"], False, orders, {"TICKET": "223"})
         status = subprocess.run(["bash", "scripts/git/task-flow.sh", "status"], cwd=root, capture_output=True, text=True, check=True)
         assert "ticket=223" in status.stdout and "ticket=224" in status.stdout
