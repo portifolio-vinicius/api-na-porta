@@ -36,6 +36,6 @@ import type { AppConfig } from '../../shared/config/appConfig.js';
       useFactory: (config: AppConfig): number => config.jwtTtlSeconds,
     },
   ],
-  exports: [JwtAuthGuard],
+  exports: [JwtAuthGuard, JwtService],
 })
 export class AuthModule {}
