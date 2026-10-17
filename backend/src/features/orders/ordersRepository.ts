@@ -81,7 +81,7 @@ export class OrdersRepository implements OrdersRepositoryInterface {
         take: filters.pageSize,
       }),
       this.prisma.order.count({ where }),
-    ]);
+    ], { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     return { rows: rows.map(mapOrder), total };
   }
 

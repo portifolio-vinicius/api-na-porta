@@ -1,22 +1,19 @@
-FROM node:24-alpine AS build
-WORKDIR /app
+FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
+WORKDIR /workspace/backend
 RUN apk add --no-cache openssl
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY backend/ ./
-COPY database/prisma/schema.prisma /database/prisma/schema.prisma
-RUN npm run build
+COPY database/prisma/schema.prisma /workspace/database/prisma/schema.prisma
+RUN npm run build && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 
-FROM node:24-alpine AS runtime
+FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
 ENV NODE_ENV=production API_PORT=3000
 WORKDIR /app
-RUN apk add --no-cache openssl \
-  && addgroup -S -g 1000 naporta \
-  && adduser -S -u 1000 -G naporta naporta
-COPY --from=build --chown=1000:1000 /app/package.json /app/package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
-COPY --from=build --chown=1000:1000 /app/dist ./dist
-COPY --from=build --chown=1000:1000 /app/node_modules/.prisma ./node_modules/.prisma
+RUN apk add --no-cache openssl
+COPY --from=build --chown=1000:1000 /workspace/backend/package.json /workspace/backend/package-lock.json ./
+COPY --from=build --chown=1000:1000 /workspace/backend/node_modules ./node_modules
+COPY --from=build --chown=1000:1000 /workspace/backend/dist ./dist
 USER 1000:1000
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \

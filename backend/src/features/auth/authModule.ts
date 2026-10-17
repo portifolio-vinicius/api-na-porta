@@ -1,3 +1,6 @@
+import type { AuthRepositoryInterface } from './authRepositoryInterface.js';
+import type { PasswordHasherInterface } from './passwordHasherInterface.js';
+import type { TokenIssuerInterface } from './tokenIssuerInterface.js';
 import { Module } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AUTH_REPOSITORY } from './authRepositoryInterface.js';
@@ -16,7 +19,12 @@ import type { AppConfig } from '../../shared/config/appConfig.js';
   controllers: [AuthController],
   providers: [
     JwtService,
-    AuthUseCases,
+    {
+      provide: AuthUseCases,
+      inject: [AUTH_REPOSITORY, PASSWORD_HASHER, TOKEN_ISSUER, 'JWT_TTL_SECONDS'],
+      useFactory: (repository: AuthRepositoryInterface, hasher: PasswordHasherInterface, issuer: TokenIssuerInterface, ttl: number): AuthUseCases =>
+        new AuthUseCases(repository, hasher, issuer, ttl),
+    },
     AuthRepository,
     JwtAuthGuard,
     { provide: AUTH_REPOSITORY, useExisting: AuthRepository },

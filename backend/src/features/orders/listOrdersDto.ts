@@ -28,6 +28,7 @@ export class ListOrdersDto {
   @Transform(({ value }: { value: unknown }) => value === undefined ? 1 : Number(value))
   @IsInt()
   @Min(1)
+  @Max(21474836)
   page = 1;
 
   @Transform(({ value }: { value: unknown }) => value === undefined ? 20 : Number(value))

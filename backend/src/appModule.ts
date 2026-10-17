@@ -11,9 +11,10 @@ import { DatabaseModule } from './shared/database/databaseModule.js';
 })
 export class AppModule {}
 
-export function createAppModule(config: AppConfig): DynamicModule {
+export function createAppModule(config: AppConfig, flushMetrics: () => Promise<void> = async () => undefined): DynamicModule {
   return {
     module: AppModule,
+    providers: [{ provide: 'HTTP_METRICS_LIFECYCLE', useValue: { onApplicationShutdown: flushMetrics } }],
     imports: [DatabaseModule.register(config), AuthModule, OrdersModule],
   };
 }

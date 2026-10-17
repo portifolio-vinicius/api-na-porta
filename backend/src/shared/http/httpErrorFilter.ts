@@ -18,11 +18,13 @@ export class HttpErrorFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-    const status = exception instanceof HttpException ? exception.getStatus() : 500;
-    const requestId = getRequestId(request.header('x-request-id'));
+    const parserType = exception && typeof exception === 'object' && 'type' in exception ? exception.type : undefined;
+    const status = exception instanceof HttpException ? exception.getStatus() : parserType === 'entity.parse.failed' ? 400 : parserType === 'entity.too.large' ? 413 : 500;
+    const existingId: unknown = response.locals.requestId;
+    const requestId = typeof existingId === 'string' ? existingId : getRequestId(request.header('x-request-id'));
     const errorResponse = exception instanceof HttpException ? exception.getResponse() : undefined;
     const details = status < 500 ? extractDetails(errorResponse) : [];
-    const message = status >= 500 ? 'Erro interno' : extractMessage(errorResponse, status);
+    const message = status >= 500 ? 'Erro interno' : status === 413 ? 'Corpo da requisição excede o limite' : extractMessage(errorResponse, status);
 
     const body: ErrorEnvelope = {
       error: {

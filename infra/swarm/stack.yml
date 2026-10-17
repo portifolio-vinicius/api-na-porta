@@ -75,6 +75,7 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: '3000'
+      TRUST_PROXY: 'true'
       JWT_ISSUER: ${JWT_ISSUER:?Defina JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE:?Defina JWT_AUDIENCE}
       JWT_TTL_SECONDS: '900'

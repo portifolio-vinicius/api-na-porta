@@ -5,6 +5,7 @@ import {
   IsArray,
   IsDateString,
   IsIn,
+  IsObject,
   IsString,
   Length,
   Matches,
@@ -32,11 +33,13 @@ export class UpdateOrderDto {
   status?: (typeof orderStatuses)[number];
 
   @ValidateIf((_object: UpdateOrderDto, value: unknown) => value !== undefined)
+  @IsObject()
   @ValidateNested()
   @Type(() => CustomerDto)
   customer?: CustomerDto;
 
   @ValidateIf((_object: UpdateOrderDto, value: unknown) => value !== undefined)
+  @IsObject()
   @ValidateNested()
   @Type(() => DeliveryAddressDto)
   deliveryAddress?: DeliveryAddressDto;
