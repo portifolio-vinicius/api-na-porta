@@ -111,6 +111,16 @@ try {
   const publicId = randomUUID();
   await pool.query('INSERT INTO users(public_id,email,password_hash) VALUES ($1,$2,$3)',
     [publicId, 'integration@example.test', await argon2.hash(password, { type: argon2.argon2id })]);
+  for (const invalid of [{ JWT_SECRET: '' }, { DATABASE_URL: 'invalid-url' }]) {
+    let failure;
+    try {
+      execute(process.execPath, ['backend/dist/main.js'], { timeout: 10000,
+        env: { PATH: process.env.PATH, DATABASE_URL: databaseUrl, JWT_SECRET: secret,
+          JWT_ISSUER: 'integration', JWT_AUDIENCE: 'integration', ...invalid } });
+    } catch (error) { failure = error; }
+    assert.equal(failure?.status, 1, 'Configuração inválida deve impedir bootstrap');
+    assert(!String(failure?.stderr).includes(secret), 'Bootstrap expôs segredo');
+  }
   const cache = join(scratch, 'cache');
   await mkdir(cache);
   const base = await startApi(await freePort(), databaseUrl, cache);

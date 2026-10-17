@@ -2,7 +2,7 @@
 
 ## Separação e feature folders
 
-Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação, rotas de pedidos e cache local de listagens estão implementados; métricas continuam pendentes. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
+Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação, rotas de pedidos e cache local de listagens estão implementados; métricas e integração HTTP real estão implementadas. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
 
 ```text
 backend/
@@ -24,13 +24,13 @@ backend/
   src/shared/config/           appConfig.ts implementado
   src/shared/database/         DatabaseModule e PrismaService implementados
   src/shared/http/             filtro de erros sanitizado implementado
-  test/integration/            Integração HTTP pendente
+  test/integration/            Integração HTTP, PostgreSQL, Compose e réplica reais
 database/
   prisma/schema.prisma       Mapeamento Prisma implementado
   prisma/migrations/         Histórico SQL versionado implementado
   seeds/                     Seed fictício de pedido implementado
   compose.yml                PostgreSQL local implementado
-scripts/                     Validações de CI implementadas; automação de ambiente futura
+scripts/                     Validações de CI implementadas; automação de ambiente e worktrees implementada
 docs/                        Documentação existente
 ```
 

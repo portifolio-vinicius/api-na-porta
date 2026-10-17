@@ -36,7 +36,7 @@ git fetch origin
 git rev-parse --verify origin/develop >/dev/null 2>&1 || { echo 'ERRO: origin/develop indisponível.'; exit 1; }
 branch="$type/$ticket-$name"
 git check-ref-format --branch "$branch" >/dev/null
-ticket_branch="$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin | grep -E "^(feature|fix)/${ticket}-" || true)"
+ticket_branch="$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes/origin | grep -E "^(origin/)?(feature|fix)/${ticket}-" || true)"
 [[ -z "$ticket_branch" ]] || { echo "ERRO: o ticket $ticket já aparece em outra branch: $ticket_branch."; exit 1; }
 git show-ref --verify --quiet "refs/heads/$branch" && { echo "ERRO: a branch $branch já existe localmente."; exit 1; }
 git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1 && { echo "ERRO: a branch $branch já existe no remoto."; exit 1; }
