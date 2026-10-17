@@ -46,6 +46,33 @@ def main():
         replication.run(command + ['up', '-d', '--wait', '--wait-timeout', '120'], env)
         check('primary role', sql('primary', 'SELECT pg_is_in_recovery();') == 'f')
         check('standby role', sql('standby', 'SELECT pg_is_in_recovery();') == 't')
+        container = replication.run(command + ['ps', '-q', 'primary'], env)
+        operations_env = dict(env, DB_CONTAINER=container)
+        for operation in ('migrate', 'seed'):
+            replication.run([sys.executable, str(ROOT / 'scripts/db/database.py'), operation], operations_env)
+            check('native executor ' + operation + ' on primary', True)
+        migration_lsn = sql('primary', 'SELECT pg_current_wal_lsn();')
+        check('application schema WAL visibility barrier', wait_for(
+            "SELECT pg_last_wal_replay_lsn() >= '" + migration_lsn + "'::pg_lsn;", 't'))
+        check('migration ledger propagates', sql('primary', 'SELECT count(*) FROM public._naporta_migrations;') ==
+              sql('standby', 'SELECT count(*) FROM public._naporta_migrations;'))
+        check('seed order relationships and decimal precision propagate', sql('standby',
+              "SELECT o.number || '|' || c.document || '|' || a.postal_code || '|' || i.price::text "
+              "FROM public.orders o JOIN public.order_customers c ON c.order_id=o.id "
+              "JOIN public.order_addresses a ON a.order_id=o.id "
+              "JOIN public.order_items i ON i.order_id=o.id "
+              "WHERE o.public_id='00000000-0000-4000-8000-000000000001';") ==
+              'DEMO-0001|DEMO-0001|01001000|49.90')
+        check('auth schema propagates', sql('standby',
+              "SELECT to_regclass('public.users') IS NOT NULL AND to_regclass('public.login_attempts') IS NOT NULL;") == 't')
+        sql('primary', "INSERT INTO public.users(public_id,email,password_hash) VALUES "
+            "('00000000-0000-4000-8000-000000000007','replication@example.invalid','synthetic-not-login-hash');")
+        auth_lsn = sql('primary', 'SELECT pg_current_wal_lsn();')
+        check('auth data WAL visibility barrier', wait_for(
+            "SELECT pg_last_wal_replay_lsn() >= '" + auth_lsn + "'::pg_lsn;", 't'))
+        check('auth synthetic row propagates', sql('standby',
+              "SELECT email FROM public.users WHERE public_id='00000000-0000-4000-8000-000000000007';") ==
+              'replication@example.invalid')
         sql('primary', 'CREATE TABLE replication_probe (id integer PRIMARY KEY, value text); INSERT INTO replication_probe VALUES (1,\'synthetic\');')
         # Wait for replay LSN first, so querying a newly created relation is safe.
         lsn = sql('primary', 'SELECT pg_current_wal_lsn();')
