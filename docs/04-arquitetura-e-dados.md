@@ -121,7 +121,7 @@ Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm
 
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.
 
-Replicação física assíncrona por streaming é a proposta para o PostgreSQL. Escritas, transações, autenticação e leituras que exigem consistência imediata usam o primário. Réplicas hot standby atendem somente leituras elegíveis e podem apresentar atraso. [Referência PostgreSQL](https://www.postgresql.org/docs/current/warm-standby.html).
+Replicação física assíncrona por streaming está implementada em perfil Compose isolado; [operação e evidências](17-replicacao.md). A stack Swarm conserva PostgreSQL único. Escritas, transações, autenticação e leituras que exigem consistência imediata usam o primário. Réplicas hot standby atendem somente leituras elegíveis e podem apresentar atraso. [Referência PostgreSQL](https://www.postgresql.org/docs/current/warm-standby.html).
 
 Para preservar o contrato de criação/edição/exclusão, consultas de pedidos usam o primário por padrão. Habilitar leitura na réplica por operação somente quando existir mecanismo que garanta a visibilidade das escritas necessárias (por exemplo, aguardar replay do WAL correspondente, com timeout e fallback). Até existir essa garantia, não direcionar listagem ou detalhe à réplica. Monitorar lag e retirar réplica indisponível/atrasada do roteamento; fallback ao primário deve respeitar seu limite de capacidade.
 
@@ -134,3 +134,7 @@ Número de instâncias, tamanho de pools, carga esperada, limite de lag, políti
 ## Ambientes
 
 Bancos separados para desenvolvimento, integração e demonstração. Credenciais e nomes devem impedir que scripts de teste ou seed atinjam produção. Migrations e seed pertencem ao banco; integração com Prisma pertence ao backend. O perfil escalado e os scripts de replicação estão em `07-scripts-e-ambiente.md`.
+
+## Configuração concreta do adapter
+
+Prisma 7 usa `@prisma/adapter-pg`: pool máximo de dez conexões por processo, aquisição em cinco segundos, statement timeout de dez segundos e lock timeout de cinco segundos. Os parâmetros são fornecidos ao driver; parâmetros legados de URL não controlam o pool do adapter. [Documentação Prisma](https://docs.prisma.io/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool). `TRUST_PROXY=false` é o padrão local; a stack interna usa true atrás de um salto Nginx. CORS só permite origens explícitas em `CORS_ORIGINS`; lista vazia não habilita acesso de navegador entre origens. `CACHE_DRIVER=file|disabled` troca o binding sem modificar os casos de uso.

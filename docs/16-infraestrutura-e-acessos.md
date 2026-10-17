@@ -25,7 +25,7 @@ docker node update --label-add naporta.edge=true <no-de-borda>
 docker node update --label-add naporta.database=true <no-do-banco>
 ```
 
-Exatamente um nó deve ter o label do banco: o volume é local. Queda desse nó deixa o banco indisponível; não remover o label e recriar o serviço em outro nó com volume vazio. Réplicas da API não são réplicas do PostgreSQL. Streaming e promoção do banco continuam pendentes; as operações de backup/restauração existentes estão descritas no documento 15 e ainda exigem adaptação operacional ao Swarm. Certificados, backups e rotação de credenciais pertencem à operação.
+Exatamente um nó deve ter o label do banco: o volume é local. Queda desse nó deixa o banco indisponível; não remover o label e recriar o serviço em outro nó com volume vazio. Réplicas da API não são réplicas do PostgreSQL. Streaming existe em [perfil Compose separado](17-replicacao.md); sua adoção no Swarm e promoção operacional continuam pendentes; as operações de backup/restauração existentes estão descritas no documento 15 e ainda exigem adaptação operacional ao Swarm. Certificados, backups e rotação de credenciais pertencem à operação.
 
 Use o exemplo de ambiente como lista de variáveis; exporte valores no shell. `docker stack` não carrega `.env` automaticamente. `BACKEND_IMAGE` deve ser uma imagem real publicada por digest. O arquivo de exemplo fixa imagens auxiliares baixadas durante a validação; essas imagens ainda precisam passar pelo scanner de vulnerabilidades antes da publicação.
 

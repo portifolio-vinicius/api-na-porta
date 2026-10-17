@@ -18,6 +18,7 @@
 | [13 — Esteiras executáveis](13-esteiras-executaveis.md) | Comandos implementados, contrato de métricas, evidências e bloqueios atuais |
 | [14 — Publicação e proteção](14-publicacao-e-protecao.md) | Estado publicado, CI remota, testes de worktree e rejeição de push direto |
 | [15 — Operações PostgreSQL](15-postgresql-operacoes.md) | Configuração, migrations, seed, rollback, backup, restauração e integração real |
+| [17 — Replicação PostgreSQL](17-replicacao.md) | Primário/standby isolados, propagação, lag e operação sem promoção automática |
 | [16 — Infraestrutura e acessos](16-infraestrutura-e-acessos.md) | Nginx HTTPS, réplicas Swarm e permissões PostgreSQL |
 
 ## Convenções

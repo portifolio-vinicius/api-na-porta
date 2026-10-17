@@ -75,7 +75,7 @@ make rollback MIGRATION=20261016000100_initial DB_CONFIRM=naporta_local BACKUP_F
 
 Para restauração, criar previamente um banco vazio no destino autorizado e mudar `PGDATABASE`/`DB_CONFIRM` para ele. O script verifica integridade do arquivo, converte o dump com `pg_restore` e executa a asserção de destino vazio e a restauração em uma única transação com lock. Destino ocupado ou erro de execução reprovam a operação. A ferramenta não cria, limpa ou substitui automaticamente bancos existentes. A entrada é um backup de origem confiável; SHA-256 verifica integridade, não autenticidade de um arquivo desconhecido.
 
-O backup atual cobre um único banco. Roles globais, tablespaces, PITR/WAL, criptografia externa, retenção, agendamento e replicação permanecem fora dessa implementação. Os clientes usam timeout de conexão de 5 segundos, lock de 5 segundos, instrução de 60 segundos e processo de operação de 120 segundos. Operações maiores exigem revisão desses limites antes de uso. O responsável define uma janela operacional para rollback e confirma dados/schema restaurados antes de usar um destino recuperado.
+O backup atual cobre um único banco. Roles globais, tablespaces, PITR/WAL para recuperação, criptografia externa, retenção e agendamento permanecem fora dessa implementação. O perfil separado de streaming está no [documento 17](17-replicacao.md). Os clientes usam timeout de conexão de 5 segundos, lock de 5 segundos, instrução de 60 segundos e processo de operação de 120 segundos. Operações maiores exigem revisão desses limites antes de uso. O responsável define uma janela operacional para rollback e confirma dados/schema restaurados antes de usar um destino recuperado.
 
 ## Validação real e CI
 

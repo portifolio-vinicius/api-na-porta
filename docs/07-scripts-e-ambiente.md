@@ -18,13 +18,14 @@ Os alvos de validação/CI e seus scripts estão implementados. Compose combina 
 | `make logs SERVICE=api` | `scripts/dev/logs.sh`: logs sem despejar configuração | Implementado; serviço api ou db |
 | `make migrate ENV=local` | `scripts/db/migrate.sh`: migrations no destino permitido | Implementado; PostgreSQL nativo, documento 15 |
 | `make seed ENV=local` | `scripts/db/seed.sh`: carga fictícia idempotente | Implementado; PostgreSQL nativo, documento 15 |
-| `make scale API_INSTANCES=2` | `scripts/dev/scale.sh`: perfil escalado, pools e réplica | Planejado; alvo/script ausentes |
-| `make replicaInit ENV=local` | `scripts/db/replica-init.sh`: base backup e standby vazio | Planejado; alvo/script ausentes |
-| `make replicaStatus ENV=local` | `scripts/db/replica-status.sh`: estado e lag sem segredos | Planejado; alvo/script ausentes |
+| `make scale API_REPLICAS=2` | `scripts/infra/scale.sh`: réplicas da API no Swarm | Implementado; exige cluster preparado, sem prometer capacidade |
+| `make replicaInit ENV=local` | `scripts/db/replication.py init`: primário e standby isolados | Implementado; credenciais privadas, volumes separados |
+| `make replicaStatus ENV=local` | `scripts/db/replication.py status`: estado e lag sem segredos | Implementado; falha quando streaming indisponível |
+| `make replicaDown` / `make replicaIntegration` | Parar preservando volumes / integração descartável real | Implementado; documento 17 |
 | `make pipelineCheck` | `scripts/ci/validate.py`: validar as próprias esteiras com fixtures descartáveis | Implementado; contagem corrente emitida pelo comando |
 | `make check` | `scripts/check.sh`: linter, geração do Prisma Client, typecheck estrito e build | Implementado; pré-requisitos no documento 13 |
 | `make security` | `scripts/security/check.sh`: coordenar scripts mínimos de segurança definidos no documento 09 | Implementado; pré-requisitos no documento 13 |
-| `make integration` | `scripts/test/backend-integration.sh`: wrapper que exige suíte real do backend; suíte/ambiente ainda ausentes | Implementado; pré-requisitos no documento 13 |
+| `make integration` | `scripts/test/backend-integration.sh`: operações PostgreSQL, réplica e suíte HTTP real do backend | Implementado; pré-requisitos no documento 13 |
 | `make taskPlan TARGET=develop` | `scripts/tasks/plan.sh`: impacto e contexto mínimo | Implementado; pré-requisitos no documento 13 |
 | `make docsUpdate` | `scripts/docs/update.sh`: gerar relatório de execução e conferir documentação; texto manual não é reescrito | Implementado; pré-requisitos no documento 13 |
 | `make docsCheck` | `scripts/docs/check.sh`: verificar destinos de links locais e correspondência entre contrato HTTP e inventário | Implementado; pré-requisitos no documento 13 |

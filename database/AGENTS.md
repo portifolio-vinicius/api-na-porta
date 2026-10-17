@@ -12,5 +12,5 @@ A leitura começa em [../AGENTS.md](../AGENTS.md). Este componente mantém model
 - Operações exigem destino explícito e ambiente autorizado. Rotinas de desenvolvimento ficam restritas a desenvolvimento, teste e demonstração.
 - Reversão de estrutura depende de plano compatível com a migration. Recuperação de dados depende de backup e restauração validados.
 - Make executa migrations, seed, rollback, backup e restauração. Configuração e limites seguem [as operações PostgreSQL](../docs/15-postgresql-operacoes.md).
-- `make dbIntegration` valida operações PostgreSQL reais e integra `make integration` do backend. Replicação permanece planejada, conforme [o plano de testes](../docs/08-validacao.md).
+- `make dbIntegration` valida operações PostgreSQL reais e integra `make integration` do backend. Replicação isolada tem integração real em `make replicaIntegration`, conforme [a operação](../docs/17-replicacao.md).
 - Evidências informam comandos, destino técnico sanitizado, resultados e limitações reais.
