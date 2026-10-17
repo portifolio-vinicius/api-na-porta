@@ -143,6 +143,10 @@ try {
   await request(base, 'POST', '/api/v1/orders', 400, 'missing-customer', { ...input, customer: undefined });
   await request(base, 'POST', '/api/v1/orders', 400, 'missing-address', { ...input, deliveryAddress: undefined });
   await request(base, 'POST', '/api/v1/orders', 400, 'malformed-json', '{', null, true);
+  await request(base, 'POST', '/api/v1/orders', 400, 'scalar-json', 'scalar');
+  await request(base, 'POST', '/api/v1/orders', 400, 'null-json', null);
+  await request(base, 'POST', '/api/v1/orders', 400, 'array-json', []);
+  await request(base, 'POST', '/api/v1/orders', 400, 'scalar-customer', { ...input, customer: 'invalid' });
   await request(base, 'POST', '/api/v1/orders', 413, 'oversized-json', JSON.stringify({ value: 'x'.repeat(1048576) }), null, true);
   await pool.query(`CREATE FUNCTION integration_fail_item() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'integration failure'; END; $$; CREATE TRIGGER integration_fail_item BEFORE INSERT ON order_items FOR EACH ROW EXECUTE FUNCTION integration_fail_item()`);
   try {
@@ -185,6 +189,8 @@ try {
   await request(base, 'GET', '/api/v1/orders?pageSize=101', 400, 'invalid-pagination');
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'empty-patch', {});
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'null-customer', { customer: null });
+  await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'null-status', { status: null });
+  await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'null-items', { items: null });
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'array-address', { deliveryAddress: [] });
   const updated = await request(second, 'PATCH', `/api/v1/orders/${order.id}`, 200, 'update-second-instance', { status: 'IN_TRANSIT' });
   assert.equal(updated.status, 'IN_TRANSIT');
@@ -198,6 +204,9 @@ try {
   const persisted = (await pool.query('SELECT id,deleted_at FROM orders WHERE public_id=$1', [order.id])).rows[0];
   assert.equal(typeof persisted.id, 'number');
   assert(persisted.deleted_at);
+  const retainedItems = (await pool.query('SELECT deleted_at FROM order_items WHERE order_id=$1', [persisted.id])).rows;
+  assert.equal(retainedItems.length, 1);
+  assert(retainedItems[0].deleted_at);
   for (let attempt=0; attempt<5; attempt+=1) await request(base, 'POST', '/api/v1/auth/login', 401, `failed-login-${attempt}`, { email: 'blocked@example.test', password: 'invalid-password' }, null);
   await request(second, 'POST', '/api/v1/auth/login', 429, 'distributed-rate-limit', { email: 'blocked@example.test', password: 'invalid-password' }, null);
   const concurrentStart = samples.length;
