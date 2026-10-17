@@ -66,7 +66,7 @@ const allowedTransitions: Readonly<Record<OrderStatus, readonly OrderStatus[]>> 
 
 export function assertOrderUpdateAllowed(status: OrderStatus, update: UpdateOrderModel): void {
   if (status === 'DELIVERED' || status === 'CANCELED') {
-    if (update.status === status && Object.keys(update).every((key) => key === 'status')) return;
+    if (update.status === status && Object.entries(update).every(([key, value]) => key === 'status' || value === undefined)) return;
     throw new OrderRuleViolation('Pedidos finalizados não podem ser editados.');
   }
 

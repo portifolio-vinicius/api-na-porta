@@ -5,7 +5,7 @@
 | Método | Rota | Status de sucesso esperado | Estado | Amostras | Latência servidor p50/p95/p99 (ms) | Latência cliente p50/p95/p99 (ms) | Status HTTP observados | Bytes corpo enviados/recebidos |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/auth/login` | 200 | Não medida | — | — | — | — | — |
-| GET | `/api/v1/health/ready` | 200 | Não medida | — | — | — | — | — |
+| GET | `/health/ready` | 200 | Não medida | — | — | — | — | — |
 | POST | `/api/v1/orders` | 201 | Não medida | — | — | — | — | — |
 | GET | `/api/v1/orders` | 200 | Não medida | — | — | — | — | — |
 | GET | `/api/v1/orders/:id` | 200 | Não medida | — | — | — | — | — |
