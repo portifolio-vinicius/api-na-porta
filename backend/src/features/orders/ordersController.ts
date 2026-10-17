@@ -94,7 +94,7 @@ export class OrdersController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) publicId: string,
     @Body() input: UpdateOrderDto,
   ): Promise<ReturnType<typeof toPublicOrder>> {
-    if (Object.keys(input).length === 0) {
+    if (Object.values(input).every((value) => value === undefined)) {
       throw new BadRequestException('Envie pelo menos um campo editável.');
     }
     try {
