@@ -45,7 +45,8 @@ for name, user in (('API_DATABASE_URL', 'naporta_app'), ('MIGRATOR_API_URL', 'na
 PY
 POSTGRES_IMAGE="$(cat "$ROOT/config/postgres-image.txt")"
 DB_CONTAINER="${DB_CONTAINER:-naporta-${PGDATABASE//_/-}-db}"
-export POSTGRES_IMAGE DB_CONTAINER
+BACKEND_LOCAL_IMAGE="${BACKEND_LOCAL_IMAGE:-naporta-backend:${PGDATABASE//_/-}}"
+export POSTGRES_IMAGE DB_CONTAINER BACKEND_LOCAL_IMAGE
 
 bash "$ROOT/scripts/db/up.sh"
 bash "$ROOT/scripts/db/local-access.sh" roles
