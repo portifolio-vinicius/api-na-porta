@@ -98,6 +98,79 @@ with tempfile.TemporaryDirectory(prefix="naporta-pipeline-validation-") as tmp:
         assert not worktree.exists() and (root / "README.md").read_text() == original
         count += 1
         print("OK: worktree removido preservando a base")
+
+        def run_task(label, command, expected, cwd, extra_env):
+            verify(label, command, expected, cwd=cwd, extra_env=extra_env)
+
+        def commit_task(cwd):
+            subprocess.run(["git", "-c", "user.name=Pipeline fixture", "-c", "user.email=fixture@example.invalid",
+                            "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+                            "add", "docs/tasks"], cwd=cwd, check=True, capture_output=True)
+            subprocess.run(["git", "-c", "user.name=Pipeline fixture", "-c", "user.email=fixture@example.invalid",
+                            "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+                            "commit", "-qm", "Registrar tarefa da fixture"], cwd=cwd, check=True, capture_output=True)
+
+        orders = Path(flow_tmp) / "orders"
+        auth = Path(flow_tmp) / "auth"
+        overlap = Path(flow_tmp) / "overlap"
+        run_task("startTask cria worktree de pedidos", ["bash", "scripts/git/start-task.sh"], True, root, {
+            "TYPE": "feature", "TICKET": "223", "NAME": "criar-pedido",
+            "FILES": "README.md", "WORKTREE_PATH": str(orders),
+        })
+        run_task("startTask cria worktree de login em paralelo", ["bash", "scripts/git/start-task.sh"], True, root, {
+            "TYPE": "feature", "TICKET": "224", "NAME": "login",
+            "FILES": "docs/05-api.md", "WORKTREE_PATH": str(auth),
+        })
+        commit_task(orders)
+        commit_task(auth)
+        run_task("taskActivate reserva pedidos", ["bash", "scripts/git/task-flow.sh", "activate"], True, orders, {"TICKET": "223"})
+        run_task("taskActivate reserva login junto com pedidos", ["bash", "scripts/git/task-flow.sh", "activate"], True, auth, {"TICKET": "224"})
+        wrong = subprocess.run(["bash", "scripts/git/task-flow.sh", "release"], cwd=auth, capture_output=True, text=True, env={**os.environ, "TICKET": "223"})
+        assert wrong.returncode != 0 and "somente o worktree da tarefa ativa" in wrong.stdout + wrong.stderr
+        count += 1
+        print("OK: taskRelease de outro worktree é recusado antes da checagem de merge")
+        status = subprocess.run(["bash", "scripts/git/task-flow.sh", "status"], cwd=root, capture_output=True, text=True, check=True)
+        assert "ticket=223" in status.stdout and "ticket=224" in status.stdout
+        count += 1
+        print("OK: taskStatus lista as duas tarefas ativas")
+        run_task("startTask cria worktree com arquivo repetido", ["bash", "scripts/git/start-task.sh"], True, root, {
+            "TYPE": "feature", "TICKET": "225", "NAME": "pedido-sobreposto",
+            "FILES": "README.md", "WORKTREE_PATH": str(overlap),
+        })
+        for index, invalid in enumerate(("./README.md", "docs//05-api.md", "docs/", ".", "docs/./05-api.md")):
+            run_task("startTask recusa caminho não canônico " + invalid,
+                     ["bash", "scripts/git/start-task.sh"], False, root, {
+                         "TYPE": "feature", "TICKET": str(330 + index), "NAME": "caminho-invalido",
+                         "FILES": invalid, "WORKTREE_PATH": str(Path(flow_tmp) / ("invalid-" + str(index))),
+                     })
+        task_file = overlap / "docs/tasks/225.md"
+        original_task = task_file.read_text()
+        for invalid in ("./README.md", "docs//05-api.md", "docs/", ".", "docs/./05-api.md"):
+            task_file.write_text(original_task.replace("- `README.md`", "- `" + invalid + "`"))
+            commit_task(overlap)
+            run_task("taskActivate recusa caminho não canônico " + invalid,
+                     ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task)
+        commit_task(overlap)
+        run_task("taskActivate bloqueia arquivo já reservado", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task.replace("- `README.md`", "- `docs`"))
+        commit_task(overlap)
+        run_task("taskActivate bloqueia diretório pai reservado", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        task_file.write_text(original_task.replace("- `README.md`", "- `docs-other/05-api.md`"))
+        commit_task(overlap)
+        legacy_record = root / ".git/task-flow-active/224"
+        original_record = legacy_record.read_text()
+        legacy_record.write_text(original_record.replace("file=docs/05-api.md", "file=docs/"))
+        run_task("taskActivate recusa reserva antiga não canônica", ["bash", "scripts/git/task-flow.sh", "activate"], False, overlap, {"TICKET": "225"})
+        legacy_record.write_text(original_record)
+        run_task("taskActivate permite prefixo sem parentesco", ["bash", "scripts/git/task-flow.sh", "activate"], True, overlap, {"TICKET": "225"})
+        run_task("taskRelease mantém a reserva antes do merge", ["bash", "scripts/git/task-flow.sh", "release"], False, orders, {"TICKET": "223"})
+        status = subprocess.run(["bash", "scripts/git/task-flow.sh", "status"], cwd=root, capture_output=True, text=True, check=True)
+        assert "ticket=223" in status.stdout and "ticket=224" in status.stdout
+        count += 1
+        print("OK: liberar antes do merge preserva as duas reservas")
+        for path in (orders, auth, overlap):
+            fixture_git("worktree", "remove", "--force", str(path))
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     directory = root / "metrics"
     directory.mkdir()
