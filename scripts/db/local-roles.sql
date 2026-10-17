@@ -1,4 +1,5 @@
 \set ON_ERROR_STOP on
+\getenv DBNAME DBNAME
 \getenv app_password APP_PASSWORD
 \getenv migrator_password MIGRATOR_PASSWORD
 SELECT current_database() ~ '^naporta_(local|demo)(_[a-z0-9]+)*$' AS allowed_database,
