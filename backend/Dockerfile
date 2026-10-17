@@ -10,7 +10,9 @@ RUN npm run build && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
 ENV NODE_ENV=production API_PORT=3000
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl \
+  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 COPY --from=build --chown=1000:1000 /workspace/backend/package.json /workspace/backend/package-lock.json ./
 COPY --from=build --chown=1000:1000 /workspace/backend/node_modules ./node_modules
 COPY --from=build --chown=1000:1000 /workspace/backend/dist ./dist
