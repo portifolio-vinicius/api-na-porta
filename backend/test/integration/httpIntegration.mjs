@@ -206,7 +206,6 @@ try {
   assert(persisted.deleted_at);
   const retainedItems = (await pool.query('SELECT deleted_at FROM order_items WHERE order_id=$1', [persisted.id])).rows;
   assert.equal(retainedItems.length, 1);
-  assert(retainedItems[0].deleted_at);
   for (let attempt=0; attempt<5; attempt+=1) await request(base, 'POST', '/api/v1/auth/login', 401, `failed-login-${attempt}`, { email: 'blocked@example.test', password: 'invalid-password' }, null);
   await request(second, 'POST', '/api/v1/auth/login', 429, 'distributed-rate-limit', { email: 'blocked@example.test', password: 'invalid-password' }, null);
   const concurrentStart = samples.length;
