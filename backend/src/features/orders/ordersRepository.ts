@@ -180,6 +180,14 @@ function isDuplicateNumberError(error: unknown): boolean {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
     return false;
   }
+  const adapter = error.meta?.driverAdapterError;
+  if (adapter && typeof adapter === 'object' && 'cause' in adapter) {
+    const cause = adapter.cause;
+    if (cause && typeof cause === 'object' && 'constraint' in cause) {
+      const constraint = cause.constraint;
+      if (constraint && typeof constraint === 'object' && 'index' in constraint && constraint.index === 'orders_number_key') return true;
+    }
+  }
   const target = error.meta?.target;
   return Array.isArray(target)
     ? target.includes('number')
