@@ -183,6 +183,7 @@ try {
   assert.equal((await request(second, 'GET', query, 200, 'second-instance-hit')).meta.total, 1);
   await request(base, 'GET', '/api/v1/orders?startDate=2027-02-01&endDate=2027-01-01', 400, 'inverted-period');
   await request(base, 'GET', '/api/v1/orders?pageSize=101', 400, 'invalid-pagination');
+  await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'empty-patch', {});
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'null-customer', { customer: null });
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'array-address', { deliveryAddress: [] });
   const updated = await request(second, 'PATCH', `/api/v1/orders/${order.id}`, 200, 'update-second-instance', { status: 'IN_TRANSIT' });
