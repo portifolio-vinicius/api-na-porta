@@ -2,6 +2,7 @@
 source "$(dirname "$0")/../common.sh"
 bash scripts/test/database-integration.sh
 python3 backend/test/integration/postgresReplication.py
+python3 backend/test/integration/demoSeed.py
 backend
 script_exists test:integration
 docker_ready

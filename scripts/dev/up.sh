@@ -55,7 +55,7 @@ PGPASSWORD="$MIGRATOR_PASSWORD"
 export PGUSER PGPASSWORD
 bash "$ROOT/scripts/db/migrate.sh"
 bash "$ROOT/scripts/db/local-access.sh" grants
-bash "$ROOT/scripts/db/seed.sh"
+SEED_PROFILE=full bash "$ROOT/scripts/db/seed.sh"
 project="naporta-${PGDATABASE//_/-}"
 docker compose --project-name "$project" \
   --file "$ROOT/database/compose.yml" \

@@ -70,7 +70,7 @@ Segredos somente nos serviços que os usam, sem build args, Dockerfile, Git ou l
 
 ## Seed e carga inicial planejados
 
-O seed SQL cria um pedido fictício com relações. `seed:demo-user` cria de forma idempotente somente um usuário fictício em `local`/`demo`, usando Argon2id e credencial de migration; usuário e senha não são impressos. Os demais cenários abaixo permanecem futuros.
+O seed SQL básico cria um pedido fictício com relações. `make seed SEED_PROFILE=full` cria seis pedidos e onze itens fictícios, com todos os status, datas variadas, número com zeros iniciais e exclusão lógica. `make up` usa o perfil completo. `make seedIntegration` valida ambos os perfis em PostgreSQL real. `seed:demo-user` cria de forma idempotente somente um usuário fictício em `local`/`demo`, usando Argon2id e credencial de migration; usuário e senha não são impressos. Repetições preservam dados existentes e incrementam a versão de cache na mesma transação.
 
 Conjunto determinístico fictício: usuário de demonstração, pedidos nos status previstos, limites de datas, múltiplos itens, zeros iniciais e soft delete. Senha fornecida por configuração, armazenada como hash e não impressa. Seed transacional/idempotente por chaves estáveis, sem alterar dados fora do conjunto e sem limpeza global; rejeita produção. Fixtures de integração são independentes.
 

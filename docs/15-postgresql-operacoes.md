@@ -38,7 +38,7 @@ Os scripts exigem conexão explícita, validam ambiente/nome do banco e mantêm 
 | `dbUp` / `dbDown` | Iniciar e parar PostgreSQL local, preservando volume |
 | `dbStatus` | Listar migrations aplicadas; consulta sem criar histórico |
 | `migrate` | Validar histórico/checksums e aplicar migrations pendentes em transação |
-| `seed` | Inserir um pedido fictício com cliente, endereço e item, de forma idempotente |
+| `seed` | Inserir dados fictícios idempotentes; basic tem um pedido e full tem seis pedidos/onze itens |
 | `backup BACKUP_FILE=...dump` | Exportar banco em formato custom, com manifesto e SHA-256 |
 | `rollback MIGRATION=... DB_CONFIRM=... BACKUP_FILE=...dump` | Reverter somente a última migration aplicada, com plano e backup compatível |
 | `restore DB_CONFIRM=... BACKUP_FILE=...dump` | Restaurar backup confiável em banco de destino vazio |
