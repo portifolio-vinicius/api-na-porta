@@ -43,9 +43,9 @@ function token(payload) {
   return `${header}.${body}.${createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url')}`;
 }
 let bearer;
-async function request(base, method, path, expected, scenario, body, authorization = bearer) {
+async function request(base, method, path, expected, scenario, body, authorization = bearer, raw = false) {
   const requestId = randomUUID();
-  const encoded = body === undefined ? undefined : JSON.stringify(body);
+  const encoded = body === undefined ? undefined : raw ? body : JSON.stringify(body);
   const started = performance.now();
   const response = await fetch(`${base}${path}`, { method, headers: {
     'x-request-id': requestId,
@@ -54,61 +54,71 @@ async function request(base, method, path, expected, scenario, body, authorizati
   }, body: encoded, signal: AbortSignal.timeout(15000) });
   const bytes = Buffer.from(await response.arrayBuffer());
   const clientDurationMs = performance.now() - started;
-  assert.equal(response.status, expected, `${scenario}: HTTP ${response.status}, esperado ${expected}`);
+  if (Array.isArray(expected)) assert(expected.includes(response.status), `${scenario}: status inesperado ${response.status}`);
+  else assert.equal(response.status, expected, `${scenario}: HTTP ${response.status}, esperado ${expected}`);
   assert.equal(response.headers.get('x-request-id'), requestId, 'correlação HTTP ausente');
   const route = path.startsWith('/api/v1/orders/') ? '/api/v1/orders/:id' : path.split('?')[0];
   samples.push({ requestId, runId, method, route, scenario, statusCode: response.status,
-    expectedStatusCode: expected, clientDurationMs, requestBodyBytes: Buffer.byteLength(encoded ?? ''),
+    expectedStatusCode: Array.isArray(expected) ? response.status : expected, clientDurationMs, requestBodyBytes: Buffer.byteLength(encoded ?? ''),
     responseBodyBytes: bytes.length, cacheOutcome: 'bypass', databaseRole: 'primary',
     outcome: 'completed', profile: 'full' });
   if (expected === 204) assert.equal(bytes.length, 0);
   const json = bytes.length ? JSON.parse(bytes.toString('utf8')) : undefined;
-  if (expected >= 400) {
+  if (response.status >= 400) {
     assert.equal(typeof json.error.requestId, 'string');
     assert(!bytes.includes(Buffer.from(secret)), 'segredo exposto');
     assert(!('stack' in json.error), 'stack exposta');
   }
   return json;
 }
-async function startApi(port, databaseUrl, cacheDirectory) {
+async function startApi(port, databaseUrl, cacheDirectory, overrides = {}) {
   const child = spawn(process.execPath, ['dist/main.js'], { cwd: join(root, 'backend'),
     env: { ...process.env, DATABASE_URL: databaseUrl, JWT_SECRET: secret, JWT_ISSUER: 'integration',
       JWT_AUDIENCE: 'integration', API_PORT: String(port), CACHE_DIRECTORY: cacheDirectory,
-      HTTP_METRICS_FILE: join(scratch, 'server.jsonl') }, stdio: ['ignore', 'pipe', 'pipe'] });
+      HTTP_METRICS_FILE: join(scratch, 'server.jsonl'), ...overrides }, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   // Keep bounded diagnostics private; never publish API output containing unpredictable data.
   let diagnostics = '';
   child.stderr.on('data', chunk => { diagnostics = (diagnostics + chunk).slice(-4096); });
   child.stdout.resume();
   const base = `http://127.0.0.1:${port}`;
-  await waitFor(async () => {
+  let lastReadyStatus = 'not-connected';
+  try { await waitFor(async () => {
     if (child.exitCode !== null) throw new Error('API encerrou antes de ficar pronta');
-    return (await fetch(`${base}/health/ready`)).status === 200;
-  }, `API não ficou pronta (${child.exitCode ?? 'timeout'})`);
+    const readiness = await fetch(`${base}/health/ready`, { signal: AbortSignal.timeout(1000) });
+    lastReadyStatus = String(readiness.status);
+    return readiness.status === 200;
+  }, `API não ficou pronta (${child.exitCode ?? 'timeout'})`); } catch {
+    throw new Error(`API não ficou pronta (status=${lastReadyStatus}, exit=${child.exitCode}, diagnóstico=${diagnostics.replaceAll(secret, '[redacted]')})`);
+  }
   return base;
 }
 try {
   execute('docker', ['info']);
   const dbPassword = randomBytes(24).toString('hex');
+  const database = `naporta_test_${randomBytes(6).toString('hex')}`;
+  const image = (await readFile(join(root, 'config/postgres-image.txt'), 'utf8')).trim();
   execute('docker', ['run', '--detach', '--name', container, '--publish', '127.0.0.1::5432',
-    '--env', `POSTGRES_PASSWORD=${dbPassword}`, '--env', 'POSTGRES_DB=naporta_integration',
-    'postgres:16.6-alpine']);
+    '--tmpfs', '/var/lib/postgresql', '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB', image],
+    { env: { ...process.env, POSTGRES_PASSWORD: dbPassword, POSTGRES_DB: database } });
   const mapped = execute('docker', ['port', container, '5432/tcp']).trim();
-  const databaseUrl = `postgresql://postgres:${dbPassword}@${mapped}/naporta_integration`;
+  const databaseUrl = `postgresql://postgres:${dbPassword}@${mapped}/${database}`;
   pool = new pg.Pool({ connectionString: databaseUrl, max: 3, connectionTimeoutMillis: 1000 });
   await waitFor(async () => { await pool.query('SELECT 1'); return true; }, 'PostgreSQL não ficou pronto');
-  const migrations = join(root, 'database/prisma/migrations');
-  for (const directory of (await readdir(migrations)).sort()) {
-    if (!/^\d/.test(directory)) continue;
-    await pool.query(await readFile(join(migrations, directory, 'migration.sql'), 'utf8'));
-  }
+  execute('make', ['migrate', 'ENV=test'], { env: { ...process.env, ENV: 'test',
+    DB_CONTAINER: container, PGDATABASE: database, PGHOST: '127.0.0.1', PGPORT: '5432',
+    PGUSER: 'postgres', PGPASSWORD: dbPassword } });
   const publicId = randomUUID();
   await pool.query('INSERT INTO users(public_id,email,password_hash) VALUES ($1,$2,$3)',
     [publicId, 'integration@example.test', await argon2.hash(password, { type: argon2.argon2id })]);
   const cache = join(scratch, 'cache');
   await mkdir(cache);
   const base = await startApi(await freePort(), databaseUrl, cache);
-  const second = await startApi(await freePort(), databaseUrl, cache);
+  const second = await startApi(await freePort(), databaseUrl, join(scratch, 'cache-second'));
+  const disabled = await startApi(await freePort(), databaseUrl, join(scratch, 'cache-disabled'), { CACHE_DRIVER: 'disabled' });
+  const unavailablePath = join(scratch, 'cache-unavailable');
+  await writeFile(unavailablePath, 'not a directory');
+  const unavailable = await startApi(await freePort(), databaseUrl, unavailablePath);
   await request(base, 'GET', '/health/ready', 200, 'ready');
   await request(base, 'GET', '/api/v1/orders', 401, 'missing-token', undefined, null);
   await request(base, 'GET', '/api/v1/orders', 401, 'invalid-token', undefined, 'invalid');
@@ -132,6 +142,15 @@ try {
     items: [{ description: 'Item fictício', price: '12.34' }] };
   await request(base, 'POST', '/api/v1/orders', 400, 'missing-customer', { ...input, customer: undefined });
   await request(base, 'POST', '/api/v1/orders', 400, 'missing-address', { ...input, deliveryAddress: undefined });
+  await request(base, 'POST', '/api/v1/orders', 400, 'malformed-json', '{', null, true);
+  await request(base, 'POST', '/api/v1/orders', 413, 'oversized-json', JSON.stringify({ value: 'x'.repeat(1048576) }), null, true);
+  await pool.query(`CREATE FUNCTION integration_fail_item() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'integration failure'; END; $$; CREATE TRIGGER integration_fail_item BEFORE INSERT ON order_items FOR EACH ROW EXECUTE FUNCTION integration_fail_item()`);
+  try {
+    await request(base, 'POST', '/api/v1/orders', 500, 'item-transaction-rollback', { ...input, number: 'ROLLBACK' });
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM orders WHERE number='ROLLBACK'")).rows[0].count, 0);
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM order_customers')).rows[0].count, 0);
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM order_addresses')).rows[0].count, 0);
+  } finally { await pool.query('DROP TRIGGER integration_fail_item ON order_items; DROP FUNCTION integration_fail_item()'); }
   const order = await request(base, 'POST', '/api/v1/orders', 201, 'create', input);
   assert.match(order.id, /^[a-f0-9-]{36}$/i);
   assert.equal(order.items[0].price, '12.34');
@@ -146,6 +165,22 @@ try {
   assert.equal(filtered.meta.total, 1);
   assert.equal(filtered.data[0].id, order.id);
   await request(base, 'GET', query, 200, 'repeat-cached-list');
+  // Corrupt and expire real entries; the API must recover using the actual database.
+  const namespace = join(cache, (await readdir(cache))[0]);
+  for (const entry of await readdir(namespace)) await writeFile(join(namespace, entry), '{');
+  assert.equal((await request(base, 'GET', query, 200, 'corrupt-cache')).meta.total, 1);
+  for (const entry of await readdir(namespace)) {
+    const file = join(namespace, entry);
+    let content;
+    try { content = JSON.parse(await readFile(file, 'utf8')); } catch { continue; }
+    content.expiresAt = 0;
+    await writeFile(file, JSON.stringify(content));
+  }
+  assert.equal((await request(base, 'GET', query, 200, 'expired-cache')).meta.total, 1);
+  assert.equal((await request(disabled, 'GET', query, 200, 'disabled-cache')).meta.total, 1);
+  assert.equal((await request(unavailable, 'GET', query, 200, 'unavailable-cache')).meta.total, 1);
+  assert.equal((await request(second, 'GET', query, 200, 'second-instance-cache')).meta.total, 1);
+  assert.equal((await request(second, 'GET', query, 200, 'second-instance-hit')).meta.total, 1);
   await request(base, 'GET', '/api/v1/orders?startDate=2027-02-01&endDate=2027-01-01', 400, 'inverted-period');
   await request(base, 'GET', '/api/v1/orders?pageSize=101', 400, 'invalid-pagination');
   await request(base, 'PATCH', `/api/v1/orders/${order.id}`, 400, 'null-customer', { customer: null });
@@ -164,6 +199,11 @@ try {
   assert(persisted.deleted_at);
   for (let attempt=0; attempt<5; attempt+=1) await request(base, 'POST', '/api/v1/auth/login', 401, `failed-login-${attempt}`, { email: 'blocked@example.test', password: 'invalid-password' }, null);
   await request(second, 'POST', '/api/v1/auth/login', 429, 'distributed-rate-limit', { email: 'blocked@example.test', password: 'invalid-password' }, null);
+  const concurrentStart = samples.length;
+  await Promise.all(Array.from({ length: 6 }, (_, index) => request(index % 2 ? second : base, 'POST', '/api/v1/auth/login', [401, 429], `concurrent-login-${index}`, { email: 'concurrent@example.test', password: 'invalid-password' }, null)));
+  const concurrentSamples = samples.slice(concurrentStart);
+  assert.equal(concurrentSamples.filter(sample => sample.statusCode === 401).length, 5);
+  assert.equal(concurrentSamples.filter(sample => sample.statusCode === 429).length, 1);
   // Real infrastructure fault: break only this run's namespace, then restore it.
   await pool.query('ALTER TABLE orders RENAME TO orders_temporarily_unavailable');
   try {
@@ -194,6 +234,8 @@ try {
       assert.equal(server.requestBodyBytes, sample.requestBodyBytes);
       publicSample.serverDurationMs = server.serverDurationMs;
       publicSample.cacheOutcome = server.cacheOutcome;
+      if (['repeat-cached-list', 'second-instance-hit'].includes(sample.scenario)) assert.equal(server.cacheOutcome, 'hit');
+      if (sample.scenario === 'disabled-cache') assert.equal(server.cacheOutcome, 'bypass');
       sample.public = publicSample;
     }
   } catch (error) {
