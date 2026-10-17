@@ -5,11 +5,14 @@ import { json } from 'express';
 import { createAppModule } from './appModule.js';
 import { loadAppConfig } from './shared/config/appConfig.js';
 import { HttpErrorFilter } from './shared/http/httpErrorFilter.js';
+import { createHttpMetricsMiddleware } from './shared/http/httpMetricsMiddleware.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadAppConfig(process.env);
-  const app = await NestFactory.create(createAppModule(config), { logger: ['error', 'warn'], bodyParser: false });
+  const metrics = createHttpMetricsMiddleware(process.env.HTTP_METRICS_FILE);
+  const app = await NestFactory.create(createAppModule(config, metrics.flush), { logger: ['error', 'warn'], bodyParser: false });
   app.getHttpAdapter().getInstance().set('trust proxy', config.trustProxy ? 1 : false);
+  app.use(metrics.middleware);
   app.use(json({ limit: '1mb' }));
   if (config.corsOrigins.length > 0) {
     app.enableCors({ origin: [...config.corsOrigins], methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-ID'] });
@@ -25,7 +28,9 @@ async function bootstrap(): Promise<void> {
   }));
   app.useGlobalFilters(new HttpErrorFilter());
   app.enableShutdownHooks();
-  await app.listen(config.apiPort, '0.0.0.0');
+  const server = await app.listen(config.apiPort, '0.0.0.0');
+  server.requestTimeout = 15_000;
+  server.headersTimeout = 10_000;
 }
 
 void bootstrap().catch(() => {
