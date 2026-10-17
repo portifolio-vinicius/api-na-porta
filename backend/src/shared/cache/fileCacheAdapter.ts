@@ -13,9 +13,17 @@ const filePattern = /^[a-f0-9]{64}\.json$/;
 
 @Injectable()
 export class FileCacheAdapter implements CacheInterface {
+  private activeReads = 0;
+  private writing = false;
   constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
 
   async get<T>(namespace: string, key: string): Promise<T | null> {
+    if (this.activeReads >= 16) return null;
+    this.activeReads += 1;
+    try { return await this.readEntry<T>(namespace, key); } finally { this.activeReads -= 1; }
+  }
+
+  private async readEntry<T>(namespace: string, key: string): Promise<T | null> {
     const path = this.entryPath(namespace, key);
     try {
       const metadata = await lstat(path);
@@ -37,6 +45,12 @@ export class FileCacheAdapter implements CacheInterface {
   }
 
   async set<T>(namespace: string, key: string, value: T, ttlSeconds: number): Promise<void> {
+    if (this.writing) return;
+    this.writing = true;
+    try { await this.writeEntry(namespace, key, value, ttlSeconds); } finally { this.writing = false; }
+  }
+
+  private async writeEntry<T>(namespace: string, key: string, value: T, ttlSeconds: number): Promise<void> {
     if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) return;
     const expiresAt = Date.now() + Math.min(ttlSeconds, maxTtlSeconds) * 1000;
     const data = JSON.stringify({ expiresAt, value });
@@ -89,10 +103,13 @@ export class FileCacheAdapter implements CacheInterface {
   private async directorySize(directory: string): Promise<number> {
     try {
       const files = await readdir(directory);
-      const sizes = await Promise.all(files.filter((name) => filePattern.test(name)).map(async (name) => {
-        try { return (await stat(join(directory, name))).size; } catch { return 0; }
-      }));
-      return sizes.reduce((total, size) => total + size, 0);
+      let total = 0;
+      for (const name of files) {
+        if (!filePattern.test(name)) continue;
+        try { total += (await lstat(join(directory, name))).size; } catch { /* removed concurrently */ }
+        if (total > maxDirectoryBytes) break;
+      }
+      return total;
     } catch {
       return 0;
     }

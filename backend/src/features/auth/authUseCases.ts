@@ -13,7 +13,7 @@ export class AuthUseCases {
 
   async login(credentials: LoginCredentials, clientAddress: string): Promise<LoginOutcome> {
     const email = credentials.email.trim().toLowerCase();
-    if (await this.repository.isBlocked(email, clientAddress)) {
+    if (await this.repository.reserveAttempt(email, clientAddress)) {
       return { kind: 'rateLimited' };
     }
 
@@ -23,7 +23,6 @@ export class AuthUseCases {
       : await this.passwordHasher.hash(credentials.password).then(() => false);
 
     if (!user || !validPassword) {
-      await this.repository.recordFailure(email, clientAddress);
       return { kind: 'invalidCredentials' };
     }
 

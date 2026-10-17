@@ -22,7 +22,6 @@ export interface OrderItemModel {
 }
 
 export interface OrderModel {
-  readonly id: number;
   readonly publicId: string;
   readonly number: string;
   readonly expectedDeliveryDate: string;

@@ -191,7 +191,6 @@ function mapOrder(row: OrderWithRelations): OrderModel {
     throw new Error('Pedido sem snapshot obrigatório no banco.');
   }
   return {
-    id: row.id,
     publicId: row.publicId,
     number: row.number,
     expectedDeliveryDate: row.expectedDeliveryDate.toISOString().slice(0, 10),

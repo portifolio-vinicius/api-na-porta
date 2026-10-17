@@ -25,40 +25,36 @@ export class AuthRepository implements AuthRepositoryInterface {
     return user;
   }
 
-  async isBlocked(email: string, clientAddress: string): Promise<boolean> {
+  async reserveAttempt(email: string, clientAddress: string): Promise<boolean> {
     await this.pruneOldAttemptsOccasionally();
     const key = this.createAttemptKey(email, clientAddress);
+    // Admission and increment share one row lock, so concurrent instances cannot
+    // all pass a separate read before their expensive password verification.
     const rows = await this.prisma.$queryRaw<LoginAttemptRow[]>`
-      SELECT (blocked_until > now()) AS blocked
-      FROM public.login_attempts
-      WHERE key = ${key}
-    `;
-    return rows[0]?.blocked ?? false;
-  }
-
-  async recordFailure(email: string, clientAddress: string): Promise<void> {
-    const key = this.createAttemptKey(email, clientAddress);
-    await this.prisma.$executeRaw`
       INSERT INTO public.login_attempts AS current_attempts
         (key, window_started_at, attempts, blocked_until, updated_at)
       VALUES (${key}, now(), 1, NULL, now())
       ON CONFLICT (key) DO UPDATE SET
         window_started_at = CASE
+          WHEN current_attempts.blocked_until > now() THEN current_attempts.window_started_at
           WHEN current_attempts.window_started_at <= now() - interval '15 minutes' THEN now()
           ELSE current_attempts.window_started_at
         END,
         attempts = CASE
+          WHEN current_attempts.blocked_until > now() THEN 5
           WHEN current_attempts.window_started_at <= now() - interval '15 minutes' THEN 1
           ELSE LEAST(current_attempts.attempts + 1, 5)
         END,
         blocked_until = CASE
           WHEN current_attempts.blocked_until > now() THEN current_attempts.blocked_until
           WHEN current_attempts.window_started_at <= now() - interval '15 minutes' THEN NULL
-          WHEN current_attempts.attempts >= 4 THEN now() + interval '15 minutes'
+          WHEN current_attempts.attempts >= 5 THEN now() + interval '15 minutes'
           ELSE NULL
         END,
         updated_at = now()
+      RETURNING COALESCE(blocked_until > now(), false) AS blocked
     `;
+    return rows[0]?.blocked ?? true;
   }
 
   async clearFailures(email: string, clientAddress: string): Promise<void> {
