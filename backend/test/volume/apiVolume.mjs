@@ -28,6 +28,7 @@ const config = {
   stages: (process.env.LOAD_STAGES || '1,10,25,50,100').split(',').map(Number),
 };
 assert(['file', 'disabled'].includes(config.cache), 'LOAD_CACHE inválido');
+assert(new Set(config.stages).size === config.stages.length, 'LOAD_STAGES não permite valores repetidos');
 assert(config.stages.length <= 10 && config.stages.length > 0 && config.stages.every(n => Number.isInteger(n) && n > 0 && n <= 200), 'LOAD_STAGES exige até dez valores entre 1 e 200');
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 const sourceInitiallyClean = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() === '';
