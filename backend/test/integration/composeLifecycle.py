@@ -77,7 +77,10 @@ def main():
         with response:
             if response.status != expected:
                 raise RuntimeError(f'{method} {path} unexpected status')
-            return json.load(response)
+            envelope = json.load(response)
+            assert envelope['code'] == ('CREATED' if expected == 201 else 'SUCCESS')
+            assert envelope['requestId'] == response.headers['X-Request-ID']
+            return envelope['data']
 
     def ready():
         deadline = time.monotonic() + 90

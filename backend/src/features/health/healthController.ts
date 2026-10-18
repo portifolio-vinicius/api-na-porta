@@ -1,5 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Inject, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, HttpCode, HttpStatus, Inject, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prismaService.js';
 
 interface ReadinessResponse {
@@ -12,12 +11,12 @@ export class HealthController {
 
   @Get('ready')
   @HttpCode(HttpStatus.OK)
-  async checkReadiness(@Res() response: Response<ReadinessResponse>): Promise<void> {
+  async checkReadiness(): Promise<ReadinessResponse> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      response.status(HttpStatus.OK).json({ status: 'ready' });
+      return { status: 'ready' };
     } catch {
-      response.status(HttpStatus.SERVICE_UNAVAILABLE).json({ status: 'unavailable' });
+      throw new ServiceUnavailableException();
     }
   }
 }

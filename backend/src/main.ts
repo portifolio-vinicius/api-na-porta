@@ -4,6 +4,7 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { json } from 'express';
 import { createAppModule } from './appModule.js';
 import { loadAppConfig } from './shared/config/appConfig.js';
+import { HttpResponseInterceptor } from './shared/http/httpResponseInterceptor.js';
 import { HttpErrorFilter } from './shared/http/httpErrorFilter.js';
 import { createHttpMetricsMiddleware } from './shared/http/httpMetricsMiddleware.js';
 
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
     transform: true,
     transformOptions: { enableImplicitConversion: false },
   }));
+  app.useGlobalInterceptors(new HttpResponseInterceptor());
   app.useGlobalFilters(new HttpErrorFilter());
   app.enableShutdownHooks();
   const server = await app.listen(config.apiPort, '0.0.0.0');
