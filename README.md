@@ -51,17 +51,87 @@ Usuários autenticados acessam um conjunto compartilhado de pedidos; não há mu
 
 ## Execução local
 
-Com Docker e Docker Compose disponíveis, configure no ambiente privado as conexões PostgreSQL, credenciais da aplicação e do migrador, configuração JWT e usuário fictício. A lista e o significado das variáveis estão em [scripts e ambiente](docs/07-scripts-e-ambiente.md).
+Você precisa de Git, Make, Bash, Python 3, Docker e Docker Compose v2, com o Docker iniciado. O build de Node.js e as ferramentas PostgreSQL rodam nos containers neste roteiro; não é necessário instalar Node ou PostgreSQL no host.
+
+**1. Obtenha o código e entre na raiz:**
 
 ```sh
-make help
-# Após configurar as variáveis obrigatórias:
-make up ENV=local
+git clone https://github.com/portifolio-vinicius/api-na-porta.git
+cd api-na-porta
+docker info >/dev/null
+docker compose version
+```
+
+Se já tem o repositório, use sua pasta atual. Execute os próximos blocos no mesmo terminal.
+
+**2. Configure um ambiente local com credenciais geradas na sua máquina:**
+
+```sh
+export ENV=local
+export PGHOST=127.0.0.1 PGPORT=5432 DB_PORT=5432
+export PGUSER=postgres PGDATABASE=naporta_local
+export DB_CONTAINER=naporta-naporta-local-db
+export API_HOST_PORT=3000
+
+export PGPASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export APP_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export MIGRATOR_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export JWT_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+export JWT_ISSUER=naporta-local JWT_AUDIENCE=naporta-api
+export DEMO_USER_EMAIL=demo@example.test
+export DEMO_USER_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+
+export API_DATABASE_URL="postgresql://naporta_app:${APP_PASSWORD}@db:5432/${PGDATABASE}"
+export MIGRATOR_API_URL="postgresql://naporta_migrator:${MIGRATOR_PASSWORD}@db:5432/${PGDATABASE}"
+```
+
+Guarde os valores em um local privado se precisar retomar em outro terminal; não os adicione ao Git. Em volumes já existentes, reutilize as credenciais originais em vez de gerar novas. As URLs usam `db:5432`, endereço interno do Compose. `DB_CONTAINER` faz as operações SQL usarem o cliente PostgreSQL do container.
+
+**3. Suba a aplicação e confira a prontidão:**
+
+```sh
+make up
+curl --fail-with-body "http://127.0.0.1:${API_HOST_PORT}/health/ready"
+```
+
+O comando prepara o banco, aplica migrations, cria seis pedidos/onze itens fictícios e o usuário de demonstração, constrói a API e aguarda sua prontidão. A primeira execução pode demorar pelo download das imagens e dependências. A API fica em `http://127.0.0.1:3000/api/v1`; a prontidão deve retornar HTTP 200.
+
+**4. Faça login e consulte pedidos:**
+
+```sh
+TOKEN="$(python3 - <<'PYLOGIN'
+import json
+import os
+import urllib.request
+
+url = 'http://127.0.0.1:' + os.environ['API_HOST_PORT'] + '/api/v1/auth/login'
+payload = json.dumps({
+    'email': os.environ['DEMO_USER_EMAIL'],
+    'password': os.environ['DEMO_USER_PASSWORD'],
+}).encode()
+request = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+with urllib.request.urlopen(request) as response:
+    print(json.load(response)['data']['accessToken'])
+PYLOGIN
+)"
+curl --fail-with-body "http://127.0.0.1:${API_HOST_PORT}/api/v1/orders?page=1&pageSize=20" \
+  -H "Authorization: Bearer ${TOKEN}"
+unset TOKEN
+```
+
+O login usa as credenciais configuradas no passo 2 e extrai o token de `data.accessToken`. Exemplos de criação, atualização, filtros e erros estão no [contrato da API](docs/05-api.md).
+
+**Logs e encerramento:**
+
+```sh
 make logs SERVICE=api
+# Ctrl+C encerra o acompanhamento dos logs.
 make down
 ```
 
-A subida aplica migrations e seed antes de iniciar a API. O seed completo contém seis pedidos e onze itens fictícios. `make down` preserva os volumes. `CACHE_DRIVER=disabled` desativa o cache; `CORS_ORIGINS` define as origens permitidas.
+`make down` preserva banco e cache. Para subir novamente, reutilize as mesmas variáveis e execute `make up`. Se a porta 3000 estiver ocupada, altere `API_HOST_PORT`; para a porta do banco, ajuste `DB_PORT` e `PGPORT` juntos. Em falha de inicialização, consulte `make logs SERVICE=api` ou `make logs SERVICE=db`.
+
+Configuração completa e comandos: [scripts e ambiente](docs/07-scripts-e-ambiente.md#ambiente-do-usuário-e-segredos). Permissões, migrations e volumes: [operações PostgreSQL](docs/15-postgresql-operacoes.md). Pré-requisitos dos comandos de validação: [esteiras executáveis](docs/13-esteiras-executaveis.md).
 
 Para compilar e verificar a qualidade, use `make check`. `make integration METRICS_DIR=artifacts/performance/<execucao-nova>` executa integração com PostgreSQL, réplica, seed, HTTP e ciclo Compose; `make routeReport` agrega as métricas do mesmo diretório. Operações de backup, restauração e rollback estão em [operações PostgreSQL](docs/15-postgresql-operacoes.md).
 
@@ -92,3 +162,19 @@ O pool permite até dez conexões PostgreSQL por processo, com timeout de conex�
 | Medição e otimização | Primeiro medir consultas e concorrência; depois adicionar índices e reduzir consultas repetidas e varreduras do cache. A contagem exata foi preservada. |
 
 As decisões e evidências completas permanecem em [escopo e premissas](docs/01-escopo-e-premissas.md), [arquitetura](docs/04-arquitetura-e-dados.md) e [registros de tarefas](docs/tasks). O [índice da documentação](docs/README.md) reúne as demais referências técnicas.
+
+## Onde encontrar mais detalhes
+
+| Assunto | Referência |
+| --- | --- |
+| Escopo e requisitos | [Premissas e decisões](docs/01-escopo-e-premissas.md) · [Requisitos](docs/02-requisitos.md) |
+| Pedidos, status e transições | [Regras de negócio](docs/03-regras-de-negocio.md) |
+| Rotas, JSON, JWT e erros | [Contrato da API](docs/05-api.md) |
+| Camadas, modelo de dados e cache | [Arquitetura e dados](docs/04-arquitetura-e-dados.md) |
+| Variáveis, subida e seed | [Scripts e ambiente](docs/07-scripts-e-ambiente.md) |
+| Segurança e verificações automatizadas | [CI e segurança](docs/09-ci-e-seguranca.md) |
+| Integração e estado das validações | [Validação](docs/08-validacao.md) · [Estado executável](docs/13-esteiras-executaveis.md) |
+| Coleta de métricas e resultados | [Performance das rotas](docs/11-performance-das-rotas.md) · [Inventário](docs/performance/rotas.md) |
+| Migrations, backup, restauração e rollback | [Operações PostgreSQL](docs/15-postgresql-operacoes.md) |
+| HTTPS, múltiplas instâncias e réplica | [Infraestrutura](docs/16-infraestrutura-e-acessos.md) · [Replicação](docs/17-replicacao.md) |
+| Histórico detalhado | [Registros de tarefas](docs/tasks) · [Índice completo](docs/README.md) |
