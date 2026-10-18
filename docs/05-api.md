@@ -1,6 +1,6 @@
 # Contratos da API
 
-Contratos propostos para implementação posterior. Prefixo `/api/v1`; JSON em UTF-8. Rotas de pedidos exigem JWT Bearer. Login e prontidão são as únicas exceções propostas.
+Prefixo `/api/v1`; JSON em UTF-8. Login, prontidão e rotas de pedidos estão implementados. Rotas de pedidos exigem JWT Bearer.
 
 ## Rotas
 
@@ -14,7 +14,9 @@ Contratos propostos para implementação posterior. Prefixo `/api/v1`; JSON em U
 | `PATCH /orders/:id` | Campos editáveis enviados parcialmente, inclusive `status` | 200, pedido atualizado |
 | `DELETE /orders/:id` | UUID público | 204, sem corpo |
 
-As rotas da tabela são relativas ao prefixo. Todas constam no [inventário de performance](performance/rotas.md), ainda sem medições. O método de coleta e os campos estão em [performance das rotas](11-performance-das-rotas.md). Criação não aceita status arbitrário; o estado inicial vem de RN-07. Em PATCH, `customer`, `deliveryAddress` ou `items`, quando enviados, substituem integralmente o respectivo bloco; campos omitidos são preservados. `items: []`, campos desconhecidos e valores nulos em campos obrigatórios são inválidos. Operação de substituição é transacional.
+As rotas da tabela são relativas ao prefixo, exceto `/health/ready`, disponível sem prefixo e somente na rede interna do proxy. Todas constam no [inventário de performance](performance/rotas.md), com medições por execução nos artefatos. O método de coleta e os campos estão em [performance das rotas](11-performance-das-rotas.md). Criação não aceita status arbitrário; o estado inicial vem de RN-07. Em PATCH, `customer`, `deliveryAddress` ou `items`, quando enviados, substituem integralmente o respectivo bloco; campos omitidos são preservados. `items: []`, campos desconhecidos e valores nulos em campos obrigatórios são inválidos. Operação de substituição é transacional.
+
+`POST /api/v1/auth/login`, `GET /health/ready` e todas as rotas de pedidos da tabela estão implementados. Login usa Argon2id, claim `sub` com UUID público e JWT assinado que valida emissor, audiência e expiração. As rotas de pedido exigem esse token. PATCH valida as transições de status e substitui blocos enviados integralmente; DELETE marca o pedido como excluído sem remover suas linhas. A integração HTTP real executou as sete rotas com métricas sanitizadas; resultados do candidato e limites estão no documento 13.
 
 ## Corpo de criação ilustrativo
 
@@ -39,9 +41,9 @@ A resposta acrescenta `id` como UUID público, `status`, `createdAt` e `updatedA
 - Paginação proposta: `page=1`, `pageSize=20`, máximo de 100; inteiros positivos. Ordenação fixa por `createdAt DESC` e ID como desempate.
 - Envelope: `{ "data": [], "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 } }`.
 - Filtros seguem RN-09/RN-10; datas inválidas, enum desconhecido e paginação fora do limite retornam 400.
-- 401 para credenciais ou token ausente, inválido ou expirado; 403 para falta de autorização se esse controle for definido; 404 para recurso inexistente/excluído; 409 para número duplicado ou transição de status proibida; 429 para limite de tentativas; 500 sem detalhes internos.
+- 401 para credenciais ou token ausente, inválido ou expirado; 403 para falta de autorização se esse controle for definido; 404 para recurso inexistente/excluído; 409 para número duplicado ou transição de status proibida; 429 para limite de tentativas; 500 sem detalhes internos. O login já bloqueia por 15 minutos o par email/IP após cinco credenciais inválidas, com contadores compartilhados no PostgreSQL.
 - Erro uniforme: `{ "error": { "code": "VALIDATION_ERROR", "message": "Dados inválidos", "details": [], "requestId": "..." } }`. Detalhes só contêm erros seguros de campo.
-- Token com expiração proposta de 15 minutos; sem refresh token no escopo inicial. Logout no consumidor descarta o token, sem promessa de revogação imediata no servidor.
+- Token com expiração padrão de 15 minutos, configurável de 1 a 60 minutos; sem refresh token no escopo inicial. Logout no consumidor descarta o token, sem promessa de revogação imediata no servidor.
 - Consumidores não devem colocar tokens em URLs ou logs. Não há frontend implementado ou planejado nesta entrega.
 
-Na implementação, os DTOs públicos deverão ter tipos/interfaces verificáveis em compilação no backend. O mapeamento nunca expõe o ID integer interno. A arquitetura, o cache e a política de exceções estão em `04-arquitetura-e-dados.md`. Respostas autenticadas usam `Cache-Control: no-store` para não expor dados por caches intermediários; o cache interno em arquivos é independente.
+Os DTOs de login e pedidos têm validação estrita e rejeitam campos desconhecidos. O filtro HTTP implementa o envelope uniforme e sanitiza erros 5xx; o mapeamento nunca expõe o ID integer interno. A arquitetura e a política de exceções estão em `04-arquitetura-e-dados.md`. Respostas autenticadas usam `Cache-Control: no-store`; a listagem usa cache interno local versionado, sem alterar cabeçalhos HTTP.

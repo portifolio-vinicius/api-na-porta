@@ -1,6 +1,6 @@
 # Performance, latência, status e volume por rota
 
-O agregador e validador de artefatos estão implementados; a instrumentação HTTP permanece planejada. Veja [o contrato executável](13-esteiras-executaveis.md). A API não existe nesta etapa; não há medidas, baseline nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
+O agregador e validador de artefatos estão implementados; a instrumentação HTTP e a suíte de integração real estão implementadas. Veja [o contrato executável](13-esteiras-executaveis.md). A API gera medidas reais por execução; não há baseline de capacidade nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
 
 ## Unidade de observação
 
@@ -44,8 +44,8 @@ Aproveitar requisições da integração; não adicionar carga só para fabricar
 
 ## Relatórios e documentação
 
-Artefatos futuros por execução: `artifacts/performance/<runId>/samples.jsonl` sanitizado, `routes.json` agregado, `routes.md` e manifesto. Status e medição representam o commit informado, inclusive falhas; retenção limitada na CI. Amostras devem ser validadas antes da agregação e percentis globais recalculados a partir das amostras, sem média de percentis entre instâncias.
+Artefatos por execução: `artifacts/performance/<runId>/samples.jsonl` sanitizado, `routes.json` agregado, `routes.md` e manifesto. Status e medição representam o commit informado, inclusive falhas; retenção limitada na CI. Amostras devem ser validadas antes da agregação e percentis globais recalculados a partir das amostras, sem média de percentis entre instâncias.
 
 `make routeReport` agrega esses artefatos deterministicamente e publica tabela por rota/cenário/status no Job Summary, com latência servidor/cliente e bytes em ambas as direções. Não reler logs completos com LLM. [Inventário versionado](performance/rotas.md) registra todas as rotas e linka evidências/baselines revisadas, sem commits automáticos por oscilação numérica. Na fase implementada, rota sem amostras é lacuna e não sucesso; no planejamento atual, “não medida” é o estado honesto.
 
-Gate de documentação/observabilidade futuro: inventário compatível com o contrato, schema válido, métricas obrigatórias dos cenários exigidos e ausência de dados sensíveis. Se a integração falhar, ainda gerar diagnóstico marcado como execução incompleta, sem aprovar merge. Não bloquear por números arbitrários de latência nem aprovar ausência de métricas. Quando SLO/baseline forem aprovados, documentar tolerância, repetições e critério de regressão antes de ativar bloqueio de performance.
+Gate de documentação/observabilidade implementado: inventário compatível com o contrato, schema válido, métricas obrigatórias dos cenários exigidos e ausência de dados sensíveis. Se a integração falhar, ainda gerar diagnóstico marcado como execução incompleta, sem aprovar merge. Não bloquear por números arbitrários de latência nem aprovar ausência de métricas. Quando SLO/baseline forem aprovados, documentar tolerância, repetições e critério de regressão antes de ativar bloqueio de performance.

@@ -7,7 +7,7 @@
 | [03 — Regras de negócio](03-regras-de-negocio.md) | Comportamentos e critérios do domínio |
 | [04 — Arquitetura e dados](04-arquitetura-e-dados.md) | Separação dos componentes, feature folders, tipos, identificadores e replicação |
 | [05 — API](05-api.md) | Contratos REST e autenticação JWT |
-| [06 — Fluxo de desenvolvimento](06-fluxo-de-desenvolvimento.md) | Branches, orchestrator e integração assíncrona |
+| [06 — Fluxo de desenvolvimento](06-fluxo-de-desenvolvimento.md) | Várias funcionalidades em worktrees paralelos e integração em develop |
 | [07 — Scripts e ambiente](07-scripts-e-ambiente.md) | Contratos dos scripts, Docker Compose, seed e replicação do banco |
 | [08 — Validação](08-validacao.md) | Integração no backend e critérios de aceite |
 | [09 — CI e segurança](09-ci-e-seguranca.md) | GitHub Actions, scanners e bloqueio de merge |
@@ -18,6 +18,7 @@
 | [13 — Esteiras executáveis](13-esteiras-executaveis.md) | Comandos implementados, contrato de métricas, evidências e bloqueios atuais |
 | [14 — Publicação e proteção](14-publicacao-e-protecao.md) | Estado publicado, CI remota, testes de worktree e rejeição de push direto |
 | [15 — Operações PostgreSQL](15-postgresql-operacoes.md) | Configuração, migrations, seed, rollback, backup, restauração e integração real |
+| [17 — Replicação PostgreSQL](17-replicacao.md) | Primário/standby isolados, propagação, lag e operação sem promoção automática |
 | [16 — Infraestrutura e acessos](16-infraestrutura-e-acessos.md) | Nginx HTTPS, réplicas Swarm e permissões PostgreSQL |
 
 ## Convenções

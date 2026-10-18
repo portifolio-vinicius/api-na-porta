@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Real PostgreSQL integration of database scripts, with disposable container and synthetic data."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -42,7 +43,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix='naporta-db-integration-') as tmp:
         directory = Path(tmp)
         env['MIGRATIONS_DIR'] = str(directory / 'migrations')
-        shutil.copytree(ROOT / 'database/prisma/migrations', env['MIGRATIONS_DIR'])
+        # Executor/rollback fault cases need a stable initial-only chain, independent
+        # from the application's growing migration history. Keep its source immutable.
+        initial_directory = directory / 'initial-migrations'
+        shutil.copytree(ROOT / 'database/prisma/migrations/20261016000100_initial',
+                        initial_directory / '20261016000100_initial')
+        shutil.copytree(initial_directory, env['MIGRATIONS_DIR'])
 
         def sql(query, custom=None):
             connection = dict(env, **(custom or {}))
@@ -77,6 +83,40 @@ def main():
                 raise RuntimeError('PostgreSQL readiness timeout')
             version = sql('SHOW server_version;')
             print('PostgreSQL real: ' + version, flush=True)
+            # Exercise every actual version separately from synthetic migration faults.
+            sql('CREATE DATABASE naporta_test_full_chain;')
+            full_chain = {'PGDATABASE': 'naporta_test_full_chain',
+                          'MIGRATIONS_DIR': str(ROOT / 'database/prisma/migrations')}
+            operation('migrate', 'cadeia real completa em banco limpo', custom=full_chain)
+            expected_history = []
+            for migration in sorted((ROOT / 'database/prisma/migrations').iterdir()):
+                up = migration / 'migration.sql'
+                if not up.is_file():
+                    continue
+                down = migration / 'rollback.sql'
+                payload = up.read_text() + '\0' + (down.read_text() if down.is_file() else '')
+                expected_history.append({'name': migration.name,
+                                         'checksum': hashlib.sha256(payload.encode()).hexdigest()})
+            history_query = "SELECT COALESCE(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM public._naporta_migrations;"
+            actual_history = sql(history_query, full_chain)
+            assertion('cadeia real registra nomes e checksums exatos',
+                      json.loads(actual_history) == expected_history)
+            operation('migrate', 'cadeia real completa repetida idempotente', custom=full_chain)
+            assertion('repetição da cadeia real preserva ledger',
+                      sql(history_query, full_chain) == actual_history)
+            assertion('cadeia real cria autenticação e limpeza de tentativas', sql(
+                "SELECT to_regclass('public.users') IS NOT NULL "
+                "AND to_regclass('public.login_attempts') IS NOT NULL "
+                "AND to_regprocedure('public.prune_login_attempts()') IS NOT NULL;", full_chain) == 't')
+            assertion('cadeia real adiciona exclusão lógica e índice de itens', sql(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' "
+                "AND table_name='order_items' AND column_name='deleted_at' AND data_type='timestamp with time zone') "
+                "AND to_regclass('public.order_items_active_order_idx') IS NOT NULL;", full_chain) == 't')
+            operation('seed', 'seed compatível com cadeia real completa', custom=full_chain)
+            operation('seed', 'seed da cadeia real repetido idempotente', custom=full_chain)
+            assertion('cadeia real preserva seed sem duplicação', sql(
+                "SELECT (SELECT count(*) FROM public.orders)||':'||(SELECT count(*) FROM public.order_items) "
+                "||':'||(SELECT price::text FROM public.order_items);", full_chain) == '1:1:49.90')
             operation('migrate','migration em banco limpo')
             operation('migrate','migration repetida idempotente')
             assertion('histórico contém uma migration', sql('SELECT count(*) FROM _naporta_migrations;') == '1')
@@ -155,7 +195,7 @@ def main():
             assertion('backup falho não publica arquivo',not failed_file.exists() and not Path(str(failed_file)+'.json').exists())
             sql('CREATE DATABASE naporta_test_empty;')
             empty={'PGDATABASE':'naporta_test_empty','DB_CONFIRM':'naporta_test_empty',
-                   'MIGRATIONS_DIR':'','BACKUP_FILE':str(directory/'empty.dump'),
+                   'MIGRATIONS_DIR':str(initial_directory),'BACKUP_FILE':str(directory/'empty.dump'),
                    'MIGRATION':'20261016000100_initial'}
             operation('migrate','schema inicial em segundo banco vazio',custom=empty)
             operation('backup','backup para reversão de schema vazio',custom=empty)

@@ -1,8 +1,12 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 TARGET ?= develop
-export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR
-export API_REPLICAS STACK_NAME DB_CONTAINER DB_ACCESS_ACTION
+SEED_PROFILE ?= basic
+CACHE_DRIVER ?= file
+JWT_TTL_SECONDS ?= 900
+export SEED_PROFILE
+export TARGET ENV DB_PORT PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE DB_CONTAINER DB_CONFIRM BACKUP_FILE MIGRATION MIGRATIONS_DIR APP_PASSWORD MIGRATOR_PASSWORD API_DATABASE_URL MIGRATOR_API_URL JWT_SECRET JWT_ISSUER JWT_AUDIENCE JWT_TTL_SECONDS DEMO_USER_EMAIL DEMO_USER_PASSWORD API_HOST_PORT TYPE TICKET NAME FILES WORKTREE_PATH
+export API_REPLICAS STACK_NAME DB_CONTAINER DB_ACCESS_ACTION REPLICATION_PASSWORD CORS_ORIGINS CACHE_DRIVER BACKEND_LOCAL_IMAGE
 .PHONY: infraValidate swarmDeploy scale dbAccess infraCheck
 infraValidate:
 	@bash scripts/infra/validate.sh
@@ -14,11 +18,14 @@ dbAccess:
 	@bash scripts/db/access.sh
 infraCheck:
 	@python3 scripts/infra/check.py
-.PHONY: pipelineCheck help check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow
+.PHONY: pipelineCheck help check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow up down logs startTask taskActivate taskRelease taskStatus
 pipelineCheck:
 	@python3 scripts/ci/validate.py
 help:
+	@printf '%s\n' 'seedIntegration; seed SEED_PROFILE=basic|full; composeIntegration; replicaInit replicaStatus replicaDown replicaIntegration; REPLICATION_PASSWORD no ambiente privado'
 	@printf '%s\n' 'infraCheck infraValidate swarmDeploy scale dbAccess' 'API_REPLICAS=2; STACK_NAME=naporta; DB_ACCESS_ACTION=roles|grants; DB_CONTAINER=<container>'
+	@printf '%s\n' 'up down logs SERVICE=api|db; ENV=local|demo PGHOST PGPORT PGUSER=postgres PGPASSWORD PGDATABASE APP_PASSWORD MIGRATOR_PASSWORD API_DATABASE_URL MIGRATOR_API_URL JWT_SECRET JWT_ISSUER JWT_AUDIENCE DEMO_USER_EMAIL DEMO_USER_PASSWORD'
+	@printf '%s\n' 'startTask TYPE=feature|fix TICKET=123 NAME=descricao FILES=backend/src,docs/05-api.md [WORKTREE_PATH=../worktree]' 'taskActivate TICKET=123; taskRelease TICKET=123; taskStatus'
 	@printf '%s\n' 'dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration' 'pipelineCheck check security integration routeReport docsCheck docsUpdate taskPlan ci preMerge validateFlow' 'TARGET=develop|master; METRICS_DIR=artifacts/performance/current'
 check:
 	@bash scripts/check.sh
@@ -40,6 +47,20 @@ preMerge:
 	@bash scripts/git/pre-merge.sh
 validateFlow:
 	@bash scripts/git/validate-flow.sh
+up:
+	@bash scripts/dev/up.sh
+down:
+	@bash scripts/dev/down.sh
+logs:
+	@bash scripts/dev/logs.sh
+startTask:
+	@bash scripts/git/start-task.sh
+taskActivate:
+	@bash scripts/git/task-flow.sh activate
+taskRelease:
+	@bash scripts/git/task-flow.sh release
+taskStatus:
+	@bash scripts/git/task-flow.sh status
 
 .PHONY: dbUp dbDown migrate rollback backup restore seed dbStatus dbIntegration
 migrate:
@@ -60,3 +81,21 @@ dbUp:
 	@bash scripts/db/up.sh
 dbDown:
 	@bash scripts/db/down.sh
+
+.PHONY: replicaInit replicaStatus replicaDown replicaIntegration
+replicaInit:
+	@python3 scripts/db/replication.py init
+replicaStatus:
+	@python3 scripts/db/replication.py status
+replicaDown:
+	@python3 scripts/db/replication.py down
+replicaIntegration:
+	@python3 backend/test/integration/postgresReplication.py
+
+.PHONY: composeIntegration
+composeIntegration:
+	@python3 backend/test/integration/composeLifecycle.py
+
+.PHONY: seedIntegration
+seedIntegration:
+	@python3 backend/test/integration/demoSeed.py

@@ -1,6 +1,18 @@
 # Esteiras executáveis
 
-Implementadas em 2026-10-16 após autorização para sair da etapa documental. O backend HTTP continua pendente; operações PostgreSQL reais foram adicionadas posteriormente e estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
+As esteiras incluem backend NestJS, autenticação JWT, CRUD/filtros/soft delete, cache de arquivos, Compose e perfil PostgreSQL streaming. O executor SQL nativo permanece único. O trabalho foi desenvolvido em branches/worktrees separados, com responsáveis por arquivo; coordenação em [009](tasks/009.md).
+
+## Composição atual e limites
+
+`make integration` executa operações PostgreSQL, replicação física real, suíte HTTP com banco/cache isolados e ciclo Compose com reinício. O perfil HTTP usa primário por consistência; o standby separado comprova propagação e lag, sem roteamento HTTP ou promoção automática. Não há Swarm multi-host, deploy público ou garantia de capacidade produtiva validada.
+
+A API fornece as sete rotas do contrato. Cache é substituível por `CACHE_DRIVER=disabled`; as instâncias usam arquivos locais e versão transacional compartilhada no primário. Limitação de login reserva tentativas atomicamente antes do hash, impedindo ultrapassagem do limite por verificações paralelas. JWT exige assinatura HS256, emissor, audiência, expiração e UUID público. Casos de uso não importam NestJS/Prisma/filesystem.
+
+A instrumentação cobre middleware, guards, validação e respostas. Logs contêm somente correlação técnica, rota normalizada, método, status e duração. A suíte junta tempos reais do servidor/cliente e bytes do corpo; não registra payloads sensíveis. Erros 400/401/404/409/429/500 e resposta 204 são verificados. Os artefatos de execução permanecem ignorados pelo Git, vinculados ao commit candidato e validados antes da publicação. Poucas amostras não estabelecem SLA.
+
+`make up/down/logs` compõe banco, migrations, seed fictício, usuário controlado, API e cache. Usa clientes do container quando `DB_CONTAINER` está definido. Imagens locais têm tag por banco/projeto, evitando que builds de worktrees diferentes disputem a mesma tag. A imagem runtime executa com UID 1000, sem npm/yarn; Node e imagem estão fixados por versão/digest. No build, Prisma gera o cliente no layout de diretórios do repositório, sem depender de arquivos gerados no host.
+
+Evidências de desenvolvimento: qualidade estática aprovada, 33 verificações de infraestrutura, 22 cenários reais de replicação e ciclo Compose completo aprovados. A suíte HTTP e scanners completos têm execução final registrada na tarefa 009 e nos checks do PR. Os registros abaixo conservam o histórico anterior; não descrevem a capacidade atual da aplicação.
 
 ## Uso
 
@@ -40,7 +52,7 @@ make docsCheck
 | `validateFlow` | Exige commit, árvore limpa, branch/destino válidos e ancestralidade da referência remota local |
 | `preMerge` | Valida fluxo e executa CI; referência remota deve ser atualizada pelo responsável antes da execução |
 
-O backend deve fornecer `backend/package.json`, `backend/package-lock.json`, `backend/src`, `backend/test` e `backend/Dockerfile`. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP pelo wrapper `make integration`. A futura suíte `test:integration` deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não implementa esse ambiente nem permite substituir esses testes por mocks. Geração do Prisma, quando necessária, deve ser explicitamente incorporada ao build/preparo do backend; instalação de dependências não executa scripts de terceiros automaticamente.
+O backend agora fornece `backend/package.json`, lockfile, `src`, schema Prisma e Dockerfile. `make check` instala as dependências, gera Prisma Client e executa lint, typecheck e build. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP por `make integration`. A suíte obrigatória `test:integration` ainda não existe; deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não permite substituir esses testes por mocks. A ausência da suíte continua reprovando o gate de integração, inclusive para a autenticação implementada.
 
 Segurança: npm audit inclui dependências de desenvolvimento e bloqueia high/critical; Gitleaks verifica arquivos e histórico disponível com saída redigida; Semgrep usa regras locais para execução dinâmica, shell e queries inseguras; Trivy verifica configuração e imagem construída. Gitleaks 8.30.1, Semgrep 1.181.0 e Trivy 0.76.0 usam imagens fixadas por digest. Regras SAST iniciais têm cobertura limitada e devem ser ampliadas conforme o código surgir. Falha de ferramenta, download ou pré-requisito reprova a etapa. O scan de imagem não monta o socket Docker no scanner.
 

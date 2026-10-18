@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/../common.sh"
 bash scripts/test/database-integration.sh
+python3 backend/test/integration/postgresReplication.py
+python3 backend/test/integration/demoSeed.py
 backend
 script_exists test:integration
 docker_ready
@@ -12,5 +14,6 @@ npm --prefix backend ci --ignore-scripts
 export INTEGRATION_PROFILE="${INTEGRATION_PROFILE:-full}"
 case "$METRICS_DIR" in /*) ;; *) METRICS_DIR="$ROOT/$METRICS_DIR" ;; esac
 export METRICS_DIR
-npm --prefix backend run test:integration -- --runInBand --passWithNoTests=false
+npm --prefix backend run test:integration
+python3 backend/test/integration/composeLifecycle.py
 python3 scripts/metrics/report.py --validate-only

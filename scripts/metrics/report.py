@@ -12,7 +12,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 ROUTES = {
     ("POST", "/api/v1/auth/login"): 200,
-    ("GET", "/api/v1/health/ready"): 200,
+    ("GET", "/health/ready"): 200,
     ("POST", "/api/v1/orders"): 201,
     ("GET", "/api/v1/orders"): 200,
     ("GET", "/api/v1/orders/:id"): 200,
