@@ -74,7 +74,8 @@ async function request(base, method, path, expected, scenario, body, authorizati
 async function startApi(port, databaseUrl, cacheDirectory, overrides = {}) {
   const child = spawn(process.execPath, ['dist/main.js'], { cwd: join(root, 'backend'),
     env: { ...process.env, DATABASE_URL: databaseUrl, JWT_SECRET: secret, JWT_ISSUER: 'integration',
-      JWT_AUDIENCE: 'integration', API_PORT: String(port), CACHE_DIRECTORY: cacheDirectory,
+      JWT_AUDIENCE: 'integration', JWT_TTL_SECONDS: '900', CACHE_DRIVER: 'file',
+      CORS_ORIGINS: '', TRUST_PROXY: 'false', API_PORT: String(port), CACHE_DIRECTORY: cacheDirectory,
       HTTP_METRICS_FILE: join(scratch, 'server.jsonl'), ...overrides }, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   // Keep bounded diagnostics private; never publish API output containing unpredictable data.

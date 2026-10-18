@@ -1,6 +1,6 @@
 # Infraestrutura, escalabilidade e acessos
 
-Implementação: [stack Swarm](../infra/swarm/stack.yml), [Nginx](../infra/nginx/nginx.conf), [exemplo de ambiente](../infra/swarm/.env.example), scripts `scripts/infra/` e `scripts/db/`, além de [imagem real do backend](../backend/Dockerfile). Compose local usa API, banco e cache em arquivos; a suíte de integração HTTP segue pendente. As migrations SQL existentes são preservadas e usadas na validação de permissões. A validação não executa deploy.
+Implementação: [stack Swarm](../infra/swarm/stack.yml), [Nginx](../infra/nginx/nginx.conf), [exemplo de ambiente](../infra/swarm/.env.example), scripts `scripts/infra/` e `scripts/db/`, além de [imagem real do backend](../backend/Dockerfile). Compose local usa API, banco e cache em arquivos; a suíte de integração HTTP está implementada com banco/cache reais e métricas por requisição. As migrations SQL existentes são preservadas e usadas na validação de permissões. A validação não executa deploy.
 
 ## Topologia e segurança
 
