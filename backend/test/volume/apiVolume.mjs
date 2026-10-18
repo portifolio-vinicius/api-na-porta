@@ -55,6 +55,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { interrupt
 const command = (cmd, args, options = {}) => run(cmd, args, { cwd: root, signal: cleaning ? undefined : cancellation.signal, timeout: 240000, maxBuffer: 8 * 1024 * 1024, ...options });
 const clients = [];
 const serverSamples = new Map();
+const createdPublicIds = new Set();
 const startedIds = new Set();
 const samples = [];
 const phases = [];
@@ -69,6 +70,7 @@ let reachedLimit = false;
 let sampler;
 let sampling = false;
 let setup;
+let dockerBudget = null;
 let seedAudit;
 let finalAudit;
 let failure = null;
@@ -207,7 +209,11 @@ async function phase(concurrency, warmup) {
           if (['create', 'update', 'detail'].includes(scenario)) {
             orderShape(result.body);
             if (scenario === 'detail') assert.equal(result.body.id, reference.public_id);
-            if (scenario === 'create') lastCreated = result.body.id;
+            if (scenario === 'create') {
+              assert(!createdPublicIds.has(result.body.id), 'UUID de criação repetido');
+              createdPublicIds.add(result.body.id);
+              lastCreated = result.body.id;
+            }
           } else if (scenario === 'delete') {
             assert.equal(result.responseBodyBytes, 0);
             lastCreated = undefined;
@@ -242,7 +248,9 @@ function distribution(values) {
 }
 try {
   console.log(`Volume: ${config.orders} pedidos; ${config.instances} instâncias; dados inteiramente fictícios.`);
-  await command('docker', ['info']);
+  const engine = await command('docker', ['info', '--format', '{{.NCPU}} {{.MemTotal}}']);
+  const [cpuCount, memoryBytes] = engine.stdout.trim().split(' ').map(Number);
+  dockerBudget = { cpuCount, memoryBytes };
   const buildStart = performance.now();
   await command('docker', ['build', '-t', imageTag, '-f', 'backend/Dockerfile', '.'], { timeout: 600000 });
   created.image = true;
@@ -334,6 +342,10 @@ try {
     count(*) FILTER(WHERE number LIKE 'SYN-HTTP-%' AND deleted_at IS NOT NULL)::int AS http_deleted,
     (SELECT count(*)::int FROM order_items i LEFT JOIN orders o ON o.id=i.order_id WHERE o.id IS NULL) AS orphan_items FROM orders`)).rows[0];
   assert(finalAudit.orders === finalAudit.unique_public_ids && finalAudit.uuid_v4 && finalAudit.orphan_items === 0);
+  if (!samples.some(sample => sample.error)) {
+    assert.equal(finalAudit.http_created, samples.filter(sample => sample.scenario === 'create').length);
+    assert.equal(finalAudit.http_deleted, samples.filter(sample => sample.scenario === 'delete').length);
+  }
 } catch (error) {
   // Do not print DB/HTTP errors: they may include connection strings or fixture data.
   failure = error instanceof assert.AssertionError ? 'assertion-failed' : error instanceof Error ? error.name : 'setup-failed';
@@ -386,7 +398,7 @@ const complete = sourceUnchanged && !interrupted && !failure && !reachedLimit &&
 const passed = complete && errors === 0 && cleanupOk;
 const report = { runId, timestamp: new Date().toISOString(), commit: sourceCommit, sourceUnchanged,
   complete, passed, failure, interrupted, cleanupOk, reachedLimit, errors, missingServerSamples, config, setup, finalAudit,
-  environment: { runtime: process.version, platform: platform(), arch: arch(), hostCpuCount: cpus().length, hostMemoryBytes: totalmem(),
+  environment: { dockerBudget, runtime: process.version, platform: platform(), arch: arch(), hostCpuCount: cpus().length, hostMemoryBytes: totalmem(),
     postgresImage, apiImage: imageTag, apiCpuLimit: 1, apiMemoryMiB: 512, databaseCpuLimit: 2, databaseMemoryMiB: 1024,
     poolConnectionsPerInstance: 10, compression: 'off', topology: 'client round-robin -> API containers -> single primary PostgreSQL; no Nginx, standby or TLS',
     clientModel: 'closed-loop constant concurrency; achieved rate, no fixed arrival rate; includes in-flight drain',
