@@ -36,6 +36,16 @@ As rotas da tabela são relativas ao prefixo, exceto `/health/ready`, disponíve
 
 A resposta acrescenta `id` como UUID público, `status`, `createdAt` e `updatedAt`. Não retorna ID interno, hash de senha nem `deletedAt`. O exemplo é fictício; não define validação de CPF/CNPJ.
 
+## Respostas JSON centralizadas
+
+A classe `Messages` em `backend/src/shared/http/messages.ts` centraliza envelopes, códigos e mensagens. O interceptor global aplica o sucesso às rotas JSON; o filtro HTTP usa a mesma classe para validação e exceções.
+
+Sucesso HTTP 200: `{ "code": "SUCCESS", "message": "Operação realizada com sucesso", "data": {}, "requestId": "..." }`. HTTP 201 usa `code: CREATED` e `message: Recurso criado com sucesso`. `data` contém o retorno da rota: token no login, pedido no CRUD, `{ "data": [], "meta": {} }` na listagem e `{ "status": "ready" }` na prontidão. O DELETE 204 continua sem corpo; `Location` na criação e status HTTP são preservados.
+
+Esta alteração exige que consumidores leiam os resultados em `response.data` (a paginação fica em `response.data.meta`). O `requestId` do corpo corresponde ao cabeçalho `X-Request-ID`.
+
+Erros mantêm o envelope `error` abaixo. Códigos: 400 `VALIDATION_ERROR`, 401 `AUTHENTICATION_ERROR`, 403 `FORBIDDEN`, 404 `NOT_FOUND`, 409 `CONFLICT`, 413 `PAYLOAD_TOO_LARGE`, 429 `RATE_LIMITED`, demais 4xx `HTTP_ERROR` e 5xx `INTERNAL_ERROR`. Validação inclui mensagens de campo em `details`; exceções HTTP podem fornecer uma mensagem pública. Todo 5xx retorna `Erro interno` e detalhes vazios, inclusive prontidão indisponível (503), sem expor a exceção original.
+
 ## Listagem, erros e autenticação
 
 - Paginação proposta: `page=1`, `pageSize=20`, máximo de 100; inteiros positivos. Ordenação fixa por `createdAt DESC` e ID como desempate.

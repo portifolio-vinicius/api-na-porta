@@ -65,9 +65,25 @@ async function request(base, method, path, expected, scenario, body, authorizati
   if (expected === 204) assert.equal(bytes.length, 0);
   const json = bytes.length ? JSON.parse(bytes.toString('utf8')) : undefined;
   if (response.status >= 400) {
-    assert.equal(typeof json.error.requestId, 'string');
+    assert.equal(json.error.requestId, requestId);
+    assert.equal(typeof json.error.code, 'string');
+    assert.equal(typeof json.error.message, 'string');
+    assert(Array.isArray(json.error.details));
+    if (response.status === 400) assert.equal(json.error.code, 'VALIDATION_ERROR');
+    if (response.status >= 500) {
+      assert.equal(json.error.code, 'INTERNAL_ERROR');
+      assert.equal(json.error.message, 'Erro interno');
+      assert.deepEqual(json.error.details, []);
+    }
     assert(!bytes.includes(Buffer.from(secret)), 'segredo exposto');
     assert(!('stack' in json.error), 'stack exposta');
+  }
+  if (response.status < 400 && response.status !== 204) {
+    assert.equal(json.code, response.status === 201 ? 'CREATED' : 'SUCCESS');
+    assert.equal(typeof json.message, 'string');
+    assert.equal(json.requestId, requestId);
+    assert('data' in json);
+    return json.data;
   }
   return json;
 }

@@ -3,14 +3,7 @@ import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-interface ErrorEnvelope {
-  readonly error: {
-    readonly code: string;
-    readonly message: string;
-    readonly details: readonly string[];
-    readonly requestId: string;
-  };
-}
+import { Messages } from './messages.js';
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
@@ -24,16 +17,9 @@ export class HttpErrorFilter implements ExceptionFilter {
     const requestId = typeof existingId === 'string' ? existingId : getRequestId(request.header('x-request-id'));
     const errorResponse = exception instanceof HttpException ? exception.getResponse() : undefined;
     const details = status < 500 ? extractDetails(errorResponse) : [];
-    const message = status >= 500 ? 'Erro interno' : status === 413 ? 'Corpo da requisição excede o limite' : extractMessage(errorResponse, status);
+    const message = extractMessage(errorResponse);
 
-    const body: ErrorEnvelope = {
-      error: {
-        code: errorCode(status),
-        message,
-        details,
-        requestId,
-      },
-    };
+    const body = Messages.error(status, requestId, message, details);
     if (status >= 500) {
       const errorType = exception instanceof Error ? exception.constructor.name : 'UnknownError';
       process.stderr.write(`${JSON.stringify({
@@ -55,29 +41,14 @@ function getRequestId(candidate: string | undefined): string {
   return candidate && /^[a-f0-9-]{1,64}$/i.test(candidate) ? candidate : randomUUID();
 }
 
-function extractMessage(response: string | object | undefined, status: number): string {
+function extractMessage(response: string | object | undefined): string | undefined {
   if (typeof response === 'string') {
     return response;
   }
   if (response && 'message' in response && typeof response.message === 'string') {
     return response.message;
   }
-  if (status === 401) {
-    return 'Não autenticado';
-  }
-  if (status === 403) {
-    return 'Acesso negado';
-  }
-  if (status === 404) {
-    return 'Recurso não encontrado';
-  }
-  if (status === 409) {
-    return 'Conflito de dados';
-  }
-  if (status === 429) {
-    return 'Muitas solicitações';
-  }
-  return 'Dados inválidos';
+  return undefined;
 }
 
 function extractDetails(response: string | object | undefined): readonly string[] {
@@ -89,23 +60,4 @@ function extractDetails(response: string | object | undefined): readonly string[
     return messages.filter((message): message is string => typeof message === 'string');
   }
   return [];
-}
-
-function errorCode(status: number): string {
-  switch (status) {
-    case 400:
-      return 'VALIDATION_ERROR';
-    case 401:
-      return 'AUTHENTICATION_ERROR';
-    case 403:
-      return 'FORBIDDEN';
-    case 404:
-      return 'NOT_FOUND';
-    case 409:
-      return 'CONFLICT';
-    case 429:
-      return 'RATE_LIMITED';
-    default:
-      return status >= 500 ? 'INTERNAL_ERROR' : 'HTTP_ERROR';
-  }
 }
