@@ -37,3 +37,7 @@ O repositório já está público. Antes da entrega da aplicação: validar o fl
 `make startTask TYPE=feature TICKET=123 NAME=descricao FILES=backend/src/features/exemplo,docs/tasks/123.md` cria branch de `origin/develop` atualizado e worktree próprio. Complete e commite o plano, depois use `make taskActivate TICKET=123`; a ativação recusa arquivos ou diretórios sobrepostos. `make taskStatus` mostra reservas. `make taskRelease TICKET=123` libera a tarefa somente após integração. Regras em [fluxo de desenvolvimento](docs/06-fluxo-de-desenvolvimento.md).
 
 Para verificar o perfil de réplica isolado: `make replicaIntegration`. Para validar a subida e persistência do ambiente completo: `make composeIntegration`. Operação manual da réplica em [17 — Replicação](docs/17-replicacao.md). O ambiente Swarm continua com PostgreSQL único; dimensionamento produtivo e deploy ficam com a operação.
+
+## Teste opcional de alto volume
+
+`make apiVolume` cria ambiente descartável e mede a API com 100 mil pedidos fictícios, duas instâncias e concorrência 1/10/25/50/100. Resultados, limites e opções em [volume da API](docs/18-volume-api.md). A [execução revisada](docs/performance/volume-014.md) aprovou 17.854 requisições medidas sem erros; os números são locais e não estabelecem SLA produtivo.
