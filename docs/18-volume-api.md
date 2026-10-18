@@ -30,4 +30,4 @@ LOAD_ORDERS: 100..1000000; LOAD_STAGES: até dez valores entre 1..200; LOAD_SECO
 
 Artefatos: report.json com ambiente/configuração/auditorias/recursos e métricas por cenário; report.md com tabela resumida; samples.jsonl com latência cliente/servidor, status e bytes de corpo, sem corpos, tokens, IDs de pedidos ou dados de clientes. Falhas preservam relatório incompleto. Campos indisponíveis usam null. Código de saída não zero para erro de preparação, limite atingido, resposta inesperada, timeout, coleta incompleta ou falha de limpeza.
 
-Não há SLA aprovado; o relatório não transforma uma execução local em garantia produtiva. Comparações exigem o mesmo ambiente, dados, mistura e configuração. Resultados reais ficam registrados na tarefa 014 após execução. Réplicas e recuperação continuam no documento 17.
+Não há SLA aprovado; o relatório não transforma uma execução local em garantia produtiva. Comparações exigem o mesmo ambiente, dados, mistura e configuração. Resultados reais ficam registrados na [tarefa 014](tasks/014.md) e na [baseline descritiva](performance/volume-014.md). Réplicas e recuperação continuam no documento 17.
