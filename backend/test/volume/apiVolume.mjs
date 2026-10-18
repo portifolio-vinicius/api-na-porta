@@ -77,7 +77,7 @@ let finalAudit;
 let failure = null;
 let setupPhase = 'build';
 let cleanupOk = true;
-const agent = new Agent({ keepAlive: true, maxSockets: Math.max(...config.stages), maxFreeSockets: Math.max(...config.stages) });
+const agent = new Agent({ keepAlive: true, timeout: 4000, agentKeepAliveTimeoutBuffer: 1000, maxSockets: Math.max(...config.stages), maxFreeSockets: Math.max(...config.stages) });
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function waitFor(check, description, seconds = 90) {
@@ -126,7 +126,7 @@ function wire(base, method, path, body, authenticated = true, requestId = random
         } catch { finish({ status: response.statusCode, error: 'invalid-json', responseBodyBytes: bytes }); }
       });
     });
-    req.on('error', () => finish({ status: null, error: 'transport', responseBodyBytes: 0 }));
+    req.on('error', error => finish({ status: null, error: 'transport', transportCode: /^[A-Z0-9_]{1,24}$/.test(error.code || '') ? error.code : 'UNKNOWN', reusedSocket: req.reusedSocket, responseBodyBytes: 0 }));
     timer = setTimeout(() => {
       finish({ status: null, error: 'timeout', responseBodyBytes: 0 });
       req.destroy();
@@ -231,6 +231,7 @@ async function phase(concurrency, warmup) {
       samples.push({ requestId, phase: label, warmup, concurrency, scenario, method,
         route: path.startsWith('/api/v1/orders/') ? '/api/v1/orders/:id' : '/api/v1/orders',
         status: result.status, expectedStatus: expected, error,
+        transportCode: result.transportCode ?? null, reusedSocketOnTransportError: result.reusedSocket ?? null,
         clientDurationMs: result.durationMs, requestBodyBytes: result.requestBodyBytes, responseBodyBytes: result.responseBodyBytes });
     }
   }));
@@ -330,6 +331,8 @@ try {
   sampler = setInterval(() => { void captureResources(); }, 5000);
   setupPhase = 'workload';
   for (const concurrency of config.stages) {
+    // Discard idle sockets from earlier concurrency levels before warming the new one.
+    for (const sockets of Object.values(agent.freeSockets)) for (const socket of sockets) socket.destroy();
     await phase(concurrency, true);
     await phase(concurrency, false);
     if (reachedLimit || interrupted) break;
@@ -372,10 +375,14 @@ try {
   if (created.image) { try { await command('docker', ['image', 'rm', imageTag]); } catch { cleanupOk = false; } }
 }
 let missingServerSamples = 0;
+let missingCompletedServerSamples = 0;
 for (const sample of samples) {
   const server = serverSamples.get(sample.requestId);
   sample.serverDurationMs = server?.durationMs ?? null;
-  if (!server) missingServerSamples += 1;
+  if (!server) {
+    missingServerSamples += 1;
+    if (sample.status !== null) missingCompletedServerSamples += 1;
+  }
   delete sample.requestId;
 }
 const summary = phases.map(p => {
@@ -395,13 +402,14 @@ const summary = phases.map(p => {
 });
 const errors = samples.filter(s => s.error).length;
 const sourceUnchanged = sourceInitiallyClean && execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim() === sourceCommit && execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() === '';
-const complete = sourceUnchanged && !interrupted && !failure && !reachedLimit && missingServerSamples === 0 && phases.length === config.stages.length * (config.warmupSeconds ? 2 : 1);
+const complete = sourceUnchanged && !interrupted && !failure && !reachedLimit && missingCompletedServerSamples === 0 && phases.length === config.stages.length * (config.warmupSeconds ? 2 : 1);
 const passed = complete && errors === 0 && cleanupOk;
 const report = { runId, timestamp: new Date().toISOString(), commit: sourceCommit, sourceUnchanged,
-  complete, passed, failure, interrupted, cleanupOk, reachedLimit, errors, missingServerSamples, config, setup, finalAudit,
+  complete, passed, failure, interrupted, cleanupOk, reachedLimit, errors, missingServerSamples, missingCompletedServerSamples, config, setup, finalAudit,
   environment: { dockerBudget, runtime: process.version, platform: platform(), arch: arch(), hostCpuCount: cpus().length, hostMemoryBytes: totalmem(),
     postgresImage, apiImage: imageTag, apiCpuLimit: 1, apiMemoryMiB: 512, databaseCpuLimit: 2, databaseMemoryMiB: 1024,
     poolConnectionsPerInstance: 10, compression: 'off', topology: 'client round-robin -> API containers -> single primary PostgreSQL; no Nginx, standby or TLS',
+    clientIdleSocketTimeoutMs: 4000, clientSocketPolicy: 'fresh idle pool before each concurrency level; keep-alive within phase; no retries',
     clientModel: 'closed-loop constant concurrency; achieved rate, no fixed arrival rate; includes in-flight drain',
     observability: 'production request logs, streamed and correlated; resource samples every5s',
     capacityClaim: 'local exploratory run; no production SLA or failover claim' }, phases: summary, resources };
