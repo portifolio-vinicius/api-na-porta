@@ -14,6 +14,7 @@
 | [10 — Eficiência e documentação](10-eficiencia-e-documentacao.md) | Contexto mínimo, consumo de tokens e atualização incremental |
 | [11 — Performance das rotas](11-performance-das-rotas.md) | Coleta de latência, status HTTP, bytes e relatórios |
 | [Análise de latência](performance/latencia-016.md) | Evidências de volume, planos SQL e prioridades de otimização |
+| [Latência da listagem](performance/latencia-017.md) | Índices, cache de arquivos e leituras repetidas da listagem |
 | [Inventário de rotas](performance/rotas.md) | Estado de medição e baseline por endpoint |
 | [12 — Verificação das esteiras](12-verificacao-das-esteiras.md) | Execução sequencial dos comandos, bloqueios observados e cenários pendentes |
 | [13 — Esteiras executáveis](13-esteiras-executaveis.md) | Comandos implementados, contrato de métricas, evidências e bloqueios atuais |
