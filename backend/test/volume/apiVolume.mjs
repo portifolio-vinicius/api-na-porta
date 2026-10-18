@@ -70,6 +70,7 @@ let setup;
 let seedAudit;
 let finalAudit;
 let failure = null;
+let setupPhase = 'build';
 let cleanupOk = true;
 const agent = new Agent({ keepAlive: true, maxSockets: Math.max(...config.stages), maxFreeSockets: Math.max(...config.stages) });
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -245,6 +246,7 @@ try {
   created.image = true;
   await command('docker', ['network', 'create', network]); created.network = true;
   await command('docker', ['volume', 'create', volume]); created.volume = true;
+  setupPhase = 'database-start';
   await command('docker', ['run', '--detach', '--name', dbContainer, '--network', network, '--network-alias', 'db',
     '--cpus', '2', '--memory', '1024m', '--publish', '127.0.0.1::5432', '--mount', `type=volume,src=${volume},dst=/var/lib/postgresql`,
     '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB', '--log-opt', 'max-size=10m', '--log-opt', 'max-file=2', postgresImage],
@@ -253,9 +255,11 @@ try {
   const mapped = (await command('docker', ['port', dbContainer, '5432/tcp'])).stdout.trim();
   pool = new pg.Pool({ connectionString: `postgresql://postgres:${dbPassword}@${mapped}/${database}`, max: 2, connectionTimeoutMillis: 2000, statement_timeout: 180000 });
   await waitFor(async () => { await pool.query('SELECT 1'); return true; }, 'Banco não ficou pronto');
+  setupPhase = 'migrations';
   await command('make', ['migrate', 'ENV=test'], { env: { ...process.env, ENV: 'test', DB_CONTAINER: dbContainer,
     PGDATABASE: database, PGHOST: '127.0.0.1', PGPORT: '5432', PGUSER: 'postgres', PGPASSWORD: dbPassword, MIGRATIONS_DIR: join(root, 'database/prisma/migrations') } });
-  const role = await pool.query("SELECT format('CREATE ROLE naporta_app LOGIN PASSWORD %L', $1)", [appPassword]);
+  setupPhase = 'roles';
+  const role = await pool.query("SELECT format('CREATE ROLE naporta_app LOGIN PASSWORD %L', $1::text)", [appPassword]);
   await pool.query(role.rows[0].format);
   await pool.query('CREATE ROLE naporta_reader NOLOGIN');
   // execFile does not accept stdin; send the versioned grants over an explicit pipe.
@@ -267,6 +271,7 @@ try {
     child.on('exit', code => code === 0 ? resolveGrants() : rejectGrants(new Error('Grants reais falharam')));
     readFile(join(root, 'database/security/grants.sql')).then(data => child.stdin.end(data)).catch(rejectGrants);
   });
+  setupPhase = 'synthetic-seed';
   const seedStart = performance.now();
   const connection = await pool.connect();
   try {
@@ -287,6 +292,7 @@ try {
   references = (await pool.query('SELECT public_id,number FROM orders WHERE deleted_at IS NULL')).rows;
   const userId = randomUUID();
   await pool.query('INSERT INTO users(public_id,email,password_hash) VALUES($1,$2,$3)', [userId, 'volume@example.test', await argon2.hash(loginPassword, { type: argon2.argon2id })]);
+  setupPhase = 'api-start';
   for (const name of apiNames) {
     await command('docker', ['run', '--detach', '--name', name, '--network', network, '--cpus', '1', '--memory', '512m',
       '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--tmpfs', '/tmp:rw,size=96m,mode=1777',
@@ -302,6 +308,7 @@ try {
     listenLogs(name);
     await waitFor(async () => (await wire(base, 'GET', '/health/ready', undefined, false)).status === 200, 'API não ficou pronta');
   }
+  setupPhase = 'login';
   const login = await wire(clients[0], 'POST', '/api/v1/auth/login', { email: 'volume@example.test', password: loginPassword }, false);
   assert.equal(login.status, 200, 'Login real falhou');
   bearer = login.body.accessToken;
@@ -310,6 +317,7 @@ try {
   console.log(`Base pronta: ${seedAudit.orders} pedidos, ${seedAudit.items} itens, UUIDs/FKs verificados.`);
   await captureResources();
   sampler = setInterval(() => { void captureResources(); }, 5000);
+  setupPhase = 'workload';
   for (const concurrency of config.stages) {
     await phase(concurrency, true);
     await phase(concurrency, false);
@@ -317,6 +325,7 @@ try {
   }
   clearInterval(sampler);
   await captureResources();
+  setupPhase = 'final-audit';
   finalAudit = (await pool.query(`SELECT count(*)::int AS orders, count(DISTINCT public_id)::int AS unique_public_ids,
     bool_and(uuid_extract_version(public_id)=4) AS uuid_v4,
     count(*) FILTER(WHERE number LIKE 'SYN-HTTP-%')::int AS http_created,
@@ -326,6 +335,8 @@ try {
 } catch (error) {
   // Do not print DB/HTTP errors: they may include connection strings or fixture data.
   failure = error instanceof assert.AssertionError ? 'assertion-failed' : error instanceof Error ? error.name : 'setup-failed';
+  const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,24}$/.test(error.code) ? error.code : null;
+  failure = `${setupPhase}:${failure}${code ? ':' + code : ''}`;
   console.error(`Execução interrompida: ${failure}`);
 } finally {
   cleaning = true;
