@@ -2,7 +2,7 @@
 
 ## Política de testes automatizados
 
-Somente testes de integração no backend nesta entrega. Não há frontend e não haverá suíte E2E de navegador agora. Se o frontend voltar ao escopo, seus testes deverão ser E2E com API real, mediante atualização deste plano. Não criar testes unitários, snapshots ou suítes isoladas de componentes, contrato, carga ou banco.
+Somente testes de integração no backend nesta entrega. Não há frontend e não haverá suíte E2E de navegador agora. Se o frontend voltar ao escopo, seus testes deverão ser E2E com API real, mediante atualização deste plano. Não criar testes unitários, snapshots ou suítes isoladas de componentes, contrato ou banco. Após solicitação explícita do usuário em 2026-10-18, testes de alto volume da API passam a ser autorizados como perfil opcional `make apiVolume`, com API/banco reais e isolados. Este perfil não substitui nem roda automaticamente no gate de integração funcional.
 
 Ferramentas propostas: Jest/Supertest, versões a definir. Integração sobe NestJS, PostgreSQL, migrations e adapter de cache em arquivos reais e isolados, sem mock de ORM/banco. Perfil de replicação usa standby real. Linter, typecheck, build e scanners de segurança são checks, não novas categorias de testes funcionais. As operações PostgreSQL têm integração real em `backend/test/integration/databaseOperations.py`, executada por `make dbIntegration` e pelo wrapper `make integration`. A suíte HTTP usa Node.js/fetch contra NestJS real; o perfil PostgreSQL streaming tem integração real própria no backend, compondo `make integration`. Jest/Supertest permanecem uma sugestão de ferramenta, sem exigência de adoção.
 
@@ -26,7 +26,7 @@ Ferramentas propostas: Jest/Supertest, versões a definir. Integração sobe Nes
 
 O conjunto mais relevante de JWT, CRUD, filtros, transações, IDs, exceções e cache roda integralmente em cada PR para develop. Casos de perfil escalado/replicação também são obrigatórios em PRs que alterem banco, cache, pools, segurança distribuída ou infraestrutura e na promoção para master. Seleção deve ser conservadora: se houver dúvida de impacto, executar tudo. Nenhum caso obrigatório pode ser desabilitado para permitir merge.
 
-Coletar métricas durante a mesma integração, conforme `11-performance-das-rotas.md`, sem suíte adicional de carga. Validar schema, cobertura de rotas e documentação com scripts; neste planejamento não existem amostras.
+Coletar métricas durante a mesma integração, conforme `11-performance-das-rotas.md`, sem suíte adicional de carga no gate padrão. O perfil opcional de volume autorizado está descrito no documento 18. Validar schema, cobertura de rotas e documentação com scripts; neste planejamento não existem amostras.
 
 Cada execução usa banco/cache próprios e dados fictícios determinísticos; paralelismo isola recursos por worker. Limpeza limitada à execução, inclusive em falha. Evidências não contêm senhas/tokens/documentos reais.
 

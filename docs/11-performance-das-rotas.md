@@ -1,6 +1,6 @@
 # Performance, latência, status e volume por rota
 
-O agregador e validador de artefatos estão implementados; a instrumentação HTTP e a suíte de integração real estão implementadas. Veja [o contrato executável](13-esteiras-executaveis.md). A API gera medidas reais por execução; não há baseline de capacidade nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
+O agregador e validador de artefatos estão implementados; a instrumentação HTTP e a suíte de integração real estão implementadas. Veja [o contrato executável](13-esteiras-executaveis.md). A API gera medidas reais por execução; não há baseline de capacidade nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, no gate funcional. O usuário autorizou posteriormente o perfil opcional de alto volume; método e limites em [18 — Volume da API](18-volume-api.md).
 
 ## Unidade de observação
 
