@@ -2,6 +2,27 @@
 
 O agregador e validador de artefatos estão implementados; a instrumentação HTTP e a suíte de integração real estão implementadas. Veja [o contrato executável](13-esteiras-executaveis.md). A API gera medidas reais por execução; não há baseline de capacidade nem SLA aprovados. Inventário inicial em [performance/rotas.md](performance/rotas.md). Coletar dados dentro dos testes de integração autorizados, sem criar suíte independente de benchmark/carga.
 
+## Implementado e evolução prevista
+
+O schema aceito hoje está no [contrato mínimo executável](13-esteiras-executaveis.md). A tabela abaixo também descreve campos desejados: `statusCounts`, `decodedResponseBodyBytes` e `responseItemCount` não são campos aceitos nas amostras atuais. Contagens por status podem ser derivadas dos grupos; bytes totais são calculados pelo agregador. Abortos são registrados pelo middleware, mas reprovam a execução do relatório obrigatório. Métricas de ocupação/espera do pool e conexões TCP não são coletadas.
+
+```mermaid
+sequenceDiagram
+    participant T as Cliente da integração
+    participant M as Middleware HTTP
+    participant A as Guards, validação e rota
+    participant R as Agregador
+    T->>M: Inicia tempo cliente e envia requisição
+    M->>A: Inicia tempo servidor
+    A-->>M: Resposta ou erro HTTP
+    M-->>T: Resposta; finish encerra tempo servidor
+    T->>T: Lê corpo completo e encerra tempo cliente
+    T->>R: Correlaciona métricas sanitizadas por requisição
+    R->>R: Valida manifesto, cobertura e commit; agrega
+```
+
+As seções seguintes definem o método e a evolução prevista. Campos ou cenários adicionais dependem de implementação e atualização do schema; não indicam cobertura já comprovada.
+
 ## Unidade de observação
 
 Uma amostra por requisição, identificada por execução, método, template da rota, cenário e status HTTP real. Usar `/api/v1/orders/:id`, sem UUIDs concretos ou query strings nas dimensões. Diferenciar lista vazia, páginas com diferentes quantidades de itens, filtros, cache hit/miss/bypass, primário/réplica e perfil simples/escalado. Não misturar operações bem-sucedidas e erros na mesma distribuição.
@@ -46,6 +67,6 @@ Aproveitar requisições da integração; não adicionar carga só para fabricar
 
 Artefatos por execução: `artifacts/performance/<runId>/samples.jsonl` sanitizado, `routes.json` agregado, `routes.md` e manifesto. Status e medição representam o commit informado, inclusive falhas; retenção limitada na CI. Amostras devem ser validadas antes da agregação e percentis globais recalculados a partir das amostras, sem média de percentis entre instâncias.
 
-`make routeReport` agrega esses artefatos deterministicamente e publica tabela por rota/cenário/status no Job Summary, com latência servidor/cliente e bytes em ambas as direções. Não reler logs completos com LLM. [Inventário versionado](performance/rotas.md) registra todas as rotas e linka evidências/baselines revisadas, sem commits automáticos por oscilação numérica. Na fase implementada, rota sem amostras é lacuna e não sucesso; no planejamento atual, “não medida” é o estado honesto.
+`make routeReport` agrega esses artefatos deterministicamente e publica tabela por rota/cenário/status no Job Summary, com latência servidor/cliente e bytes em ambas as direções. Não reler logs completos com LLM. [Inventário versionado](performance/rotas.md) registra todas as rotas e linka evidências/baselines revisadas, sem commits automáticos por oscilação numérica. Na fase implementada, rota sem amostras é lacuna e não sucesso; no inventário versionado, “—” indica ausência de baseline numérica revisada.
 
 Gate de documentação/observabilidade implementado: inventário compatível com o contrato, schema válido, métricas obrigatórias dos cenários exigidos e ausência de dados sensíveis. Se a integração falhar, ainda gerar diagnóstico marcado como execução incompleta, sem aprovar merge. Não bloquear por números arbitrários de latência nem aprovar ausência de métricas. Quando SLO/baseline forem aprovados, documentar tolerância, repetições e critério de regressão antes de ativar bloqueio de performance.

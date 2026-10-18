@@ -27,3 +27,13 @@
 `OBRIGATÓRIO` identifica exigência expressa no desafio ou nas instruções do usuário. `PROPOSTO` identifica uma decisão de projeto adicionada para tornar o planejamento concreto. `A CONFIRMAR` identifica informação ambígua ou ausente. Propostas não representam funcionalidades já implementadas.
 
 Os requisitos ficam no documento 02, as regras no 03, os contratos no 05 e o fluxo de branches no 06. Os arquivos `AGENTS.md` apenas orientam a execução e apontam para essas fontes.
+
+## Por onde começar
+
+- Executar e entender os limites: [README da raiz](../README.md).
+- Consumir a API: [contratos e envelopes](05-api.md).
+- Entender implementação e dados: [arquitetura](04-arquitetura-e-dados.md).
+- Validar o candidato: [esteiras executáveis](13-esteiras-executaveis.md).
+- Consultar tempos históricos: [análise 016](performance/latencia-016.md).
+
+Registros de tarefas e seções históricas comprovam o estado no commit/data informados. Não substituem o código atual nem demonstram aprovação dos gates de uma nova execução.

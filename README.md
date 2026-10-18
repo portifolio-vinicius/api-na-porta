@@ -1,10 +1,20 @@
 # naPorta — desafio e esteiras
 
-Documentação de uma Web API de pedidos consumida por um portal web. O desafio prevê entrega em repositório público no GitHub, em três dias corridos a partir do recebimento do e-mail. A data de recebimento não foi informada; não há prazo absoluto calculado.
+Web API de pedidos em NestJS, PostgreSQL e Prisma: autenticação JWT, CRUD, filtros, paginação, exclusão lógica e cache de listagens em arquivos. O frontend não faz parte da entrega atual.
 
-**Etapa atual: backend, cache, Compose e replicação isolada implementados; validação coordenada em branches separadas.** A API NestJS verifica prontidão PostgreSQL, autentica com JWT e usa schema Prisma mapeado. Migrations SQL continuam com executor nativo. A integração usa HTTP, PostgreSQL e arquivos reais. Resultados finais e limitações ficam no registro da tarefa 009 e nos checks do PR. Veja [execução das esteiras](docs/13-esteiras-executaveis.md).
+**Implementado:** API, integração HTTP real, métricas por rota, ambiente Compose e replicação PostgreSQL em perfil isolado. Swarm/Nginx têm configuração e scripts; deploy público, failover automático e SLA de produção não estão validados. Veja [estado executável e gates](docs/13-esteiras-executaveis.md).
 
-O [repositório público](https://github.com/portifolio-vinicius/api-na-porta) usa `master` como padrão e `develop` como base das tarefas. Ambas aceitam alterações somente por merge de PR com gate aprovado; push direto, force push e exclusão estão bloqueados, sem bypass. Configuração no [documento 09](docs/09-ci-e-seguranca.md) e evidências no [documento 14](docs/14-publicacao-e-protecao.md). A base inicial ainda não representa uma aplicação aprovada para produção.
+```mermaid
+flowchart LR
+    C[Cliente HTTP] --> A[API NestJS + JWT]
+    A --> P[(PostgreSQL primário)]
+    A --> F[Cache local de listagens]
+    P -. Streaming em perfil isolado .-> R[(Standby)]
+```
+
+Todas as leituras e escritas HTTP usam o primário. O standby não recebe consultas da API. No perfil Swarm, Nginx distribui requisições entre instâncias da API; o banco permanece único. [Arquitetura](docs/04-arquitetura-e-dados.md) e [infraestrutura](docs/16-infraestrutura-e-acessos.md).
+
+O [repositório público](https://github.com/portifolio-vinicius/api-na-porta) usa PRs para `develop` e promoção por PR para `master`. As proteções registradas e suas evidências estão nos [documentos 09](docs/09-ci-e-seguranca.md) e [14](docs/14-publicacao-e-protecao.md).
 
 ## Organização
 
@@ -26,7 +36,46 @@ Para compilar: `make check`. Para executar o ambiente completo, configure as var
 
 Para validar documentação, execute `make docsCheck`; para operações reais do banco, `make dbIntegration`. Configuração do banco em [operações PostgreSQL](docs/15-postgresql-operacoes.md). `make integration METRICS_DIR=artifacts/performance/<execucao-nova>` executa operações PostgreSQL, streaming, HTTP e ciclo Compose; `make routeReport` valida e agrega a mesma execução. Veja [o catálogo de comandos](docs/07-scripts-e-ambiente.md).
 
-Planejamento da [esteira eficiente](docs/10-eficiencia-e-documentacao.md) e da [performance por rota](docs/11-performance-das-rotas.md), com [inventário de rotas](docs/performance/rotas.md). Scripts e workflow de CI existem; a coleta HTTP acompanha a mesma integração, sem suíte separada de carga.
+Orientações da [esteira eficiente](docs/10-eficiencia-e-documentacao.md) e da [performance por rota](docs/11-performance-das-rotas.md), com [inventário de rotas](docs/performance/rotas.md). Scripts e workflow de CI existem; a coleta HTTP acompanha a mesma integração, sem suíte separada de carga.
+
+## Tempos, concorrência e conexões da API
+
+Resultados históricos de 18/10/2026, registrados na [análise de latência da tarefa 016](docs/performance/latencia-016.md), a partir do ensaio da tarefa 014 no commit `eaeb1d7b00d0e60dd69a38fa57f2a15519159f4f`. Não são uma nova medição desta revisão nem garantia de capacidade da versão atual.
+
+| Clientes HTTP simultâneos | Requisições/s efetivas | p95 cliente (ms) | p99 cliente (ms) |
+| --- | --- | --- | --- |
+| 1 | 108,93 | 35,02 | 46,30 |
+| 10 | 282,62 | 117,96 | 183,56 |
+| 25 | 266,03 | 274,65 | 401,67 |
+| 50 | 249,01 | 516,68 | 739,96 |
+| 100 | 275,31 | 1.003,70 | 1.511,82 |
+
+Ensaio com 100.000 pedidos/240.000 itens, duas APIs (1 CPU/512 MiB cada), PostgreSQL (2 CPUs/1 GiB), cache de arquivos e cerca de 70% leituras/30% escritas. Cada etapa teve 3 s de aquecimento e 15 s medidos, em modelo fechado de concorrência constante. Foram 17.854 requisições medidas, zero erros e correlação completa das respostas HTTP concluídas com métricas do servidor. Os percentis agregam cenários distintos; consulte a análise para tempos por operação. Não houve Nginx, HTTPS ou leituras em réplica nesse ensaio. O comando opcional `make apiVolume` da tarefa 014 ainda não integra esta base.
+
+Concorrência HTTP é a quantidade de clientes simultâneos do ensaio; não informa quantas conexões PostgreSQL estavam abertas. Os limites abaixo são configuração, sem medição de ocupação do pool:
+
+| Configuração implementada | Valor |
+| --- | --- |
+| Pool PostgreSQL por processo de API | Até 10 conexões |
+| Duas instâncias de API | Até 20 conexões somadas |
+| Timeout para conexão ao PostgreSQL | 5 s |
+| Conexão ociosa no pool | 10 s |
+| `statement_timeout` / `lock_timeout` | 10 s / 5 s |
+| Sessão ociosa em transação | 10 s |
+| HTTP `requestTimeout` / `headersTimeout` | 15 s / 10 s |
+
+Fontes: [adapter PostgreSQL](backend/src/shared/database/prismaService.ts) e [bootstrap HTTP](backend/src/main.ts). Timeouts HTTP de recebimento não representam um SLA de execução da rota. O orçamento Swarm, incluindo rolling update e roles do banco, está no [documento 16](docs/16-infraestrutura-e-acessos.md).
+
+A integração obrigatória registra tempo no servidor e no cliente, status HTTP, cache e bytes de corpo por rota. `p95` é o valor no posto `ceil(0,95 × N)` das amostras ordenadas; grupos com menos de 100 amostras são sinalizados como descritivos. Não há coleta implementada de conexões ativas/ociosas, espera no pool ou conexões TCP HTTP.
+
+```sh
+# Execute na raiz, com Docker ativo e pré-requisitos configurados.
+# Escolha um diretório inexistente a cada execução.
+make integration METRICS_DIR=artifacts/performance/revisao-001
+make routeReport METRICS_DIR=artifacts/performance/revisao-001
+```
+
+O mesmo diretório recebe `manifest.json`, `samples.jsonl`, `routes.json` e `routes.md`. A agregação exige artefatos do commit atual e execução completa. [Contrato das métricas](docs/13-esteiras-executaveis.md) e [inventário de rotas](docs/performance/rotas.md).
 
 ## Entrega
 

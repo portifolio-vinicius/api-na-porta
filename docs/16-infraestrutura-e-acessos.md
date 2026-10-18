@@ -54,7 +54,7 @@ Número inicial: duas réplicas; scripts aceitam de uma a quatro. Cada processo 
 
 A imagem deve conter Node.js com `fetch`, `/bin/sh`, `dist/main.js` relativo ao `WORKDIR`, e permitir execução com UID/GID 1000. Deve escutar em `0.0.0.0:3000`, encerrar graciosamente em SIGTERM e fornecer `/health/ready` (HTTP 200 somente quando a aplicação e o banco estiverem prontos). Esse endpoint não é publicado pelo proxy. Nenhuma migration deve rodar no bootstrap das réplicas.
 
-O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Login com Argon2id/JWT, limitação compartilhada, rotas de pedidos e cache local para listagens estão implementados; Compose de desenvolvimento está implementado, mas ainda não foi executado neste branch. Métricas seguem pendentes. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão executa uma consulta real ao banco.
+O wrapper lê os secrets e exporta `DATABASE_URL` e `JWT_SECRET` sem imprimir valores. Valida usuário, host, banco e schema. Prisma 7 usa driver adapter `pg`; a API configura o pool no adapter e usa o schema `public`. Login com Argon2id/JWT, limitação compartilhada, rotas de pedidos e cache local para listagens estão implementados; Compose de desenvolvimento e métricas HTTP estão implementados. Evidências de execução e limites atuais ficam no [documento 13](13-esteiras-executaveis.md); isso não comprova deploy Swarm. Atualização gradual tem uma tarefa por vez, `start-first` e rollback em falha; a prontidão executa uma consulta real ao banco.
 
 ## Permissões do PostgreSQL
 
@@ -84,7 +84,7 @@ Esse comando altera senhas; coordenar rotação com nova versão do secret de UR
 
 ## Validação e limites
 
-Verificação local realizada anteriormente: build da imagem do proxy aprovado e checks de infraestrutura aprovados. O backend agora passa `make check`; a imagem não foi construída nesta tarefa. A verificação de segurança da imagem completa e a integração HTTP seguem pendentes; não há resultado de scan aprovado para a imagem do backend.
+Verificação local realizada anteriormente: build da imagem do proxy aprovado e checks de infraestrutura aprovados. O backend agora passa `make check`; a imagem não foi construída nesta tarefa. A verificação de segurança da imagem completa e a validação de integração no Swarm seguem pendentes; não há resultado de scan aprovado para a imagem do backend.
 
 `make infraCheck` cria rede e containers temporários, com dados fictícios em tmpfs e certificado autossinado descartável. Valida manifesto, limites de escala, inicialização e reaplicação de roles/grants, operações permitidas/negadas, SCRAM e bloqueio de administração remota; valida Nginx sem root, HTTPS, cabeçalhos, distribuição entre dois upstreams e 429 no login. Remove somente recursos criados pela própria execução. Precisa de Docker, Python 3, OpenSSL, Bash, acesso às imagens e sub-rede livre. Não mede capacidade de produção.
 

@@ -14,6 +14,6 @@
 
 ## Evidências e baseline
 
-Nenhuma baseline numérica foi promovida a compromisso de desempenho. Relatórios de execução separam cenário, status, cache e perfil; conter contagem de erros/abortos, latência, bytes por direção/total, volume retornado e metadados de execução. Cenários de erro seguem contrato e plano de integração, sem inventar ocorrências.
+Nenhuma baseline numérica foi promovida a compromisso de desempenho. Relatórios de execução separam cenário, status, cache e perfil; incluem latência, contagem por grupo/status, bytes por direção/total e manifesto. Volume em itens e contadores de abortos são evolução prevista; o relatório obrigatório atual rejeita execuções incompletas. A [análise 016](latencia-016.md) contém resultados históricos de volume, sem convertê-los em baseline aprovada. Cenários de erro seguem contrato e plano de integração, sem inventar ocorrências.
 
 Tabela versionada mantém rastreabilidade e apenas baselines explicitamente revisadas. Relatórios de cada execução ficam nos artefatos da CI, identificados pelo commit/run ID; o responsável inclui links válidos ao aceitar uma baseline. Não substituir esta tabela por números demonstrativos que pareçam medições reais.

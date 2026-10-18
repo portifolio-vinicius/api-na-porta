@@ -18,7 +18,9 @@ backend/
     ordersRepositoryInterface.ts
     orderModel.ts
     ordersTypes.ts
-    ordersDto.ts
+    createOrderDto.ts
+    updateOrderDto.ts
+    listOrdersDto.ts
   src/features/auth/           Login/JWT implementados
   src/shared/cache/            Interface e adapter local em arquivos
   src/shared/config/           appConfig.ts implementado
@@ -59,7 +61,7 @@ Manter nomes claros, funções focadas, regras em uma única fonte e mapeamentos
 
 ## Bootstrap, configuração e main
 
-`backend/src/main.ts` é o ponto de entrada implementado: carregar/validar `API_PORT`, banco e configuração JWT, criar aplicação, excluir prontidão do prefixo `/api/v1`, registrar shutdown hooks e iniciar em `0.0.0.0`. `/health/ready` consulta o primário e responde 503 sem expor detalhes em caso de falha. Pipes globais estritos, envelope HTTP de erro sanitizado e log estruturado sem payloads estão implementados. CORS e logging de requisições ficam para quando houver consumidores definidos.
+`backend/src/main.ts` é o ponto de entrada implementado: carregar/validar `API_PORT`, banco e configuração JWT, criar aplicação, excluir prontidão do prefixo `/api/v1`, registrar shutdown hooks e iniciar em `0.0.0.0`. `/health/ready` consulta o primário e responde 503 sem expor detalhes em caso de falha. Pipes globais estritos, envelope HTTP de erro sanitizado e log estruturado sem payloads estão implementados. CORS permite origens explícitas em `CORS_ORIGINS`; logging estruturado de requisições e métricas HTTP estão implementados.
 
 “Main” aqui identifica o bootstrap da aplicação. O fluxo de branches continua `develop → master`; não renomear a branch de produção sem nova instrução.
 
@@ -83,11 +85,11 @@ Na camada HTTP, usar `BadRequestException`, `UnauthorizedException`, `ForbiddenE
 
 Contrato assíncrono `CacheInterface`: leitura, escrita com TTL, remoção e invalidação de namespace. Adapter inicial `fileCacheAdapter.ts` usa filesystem, isolado atrás da interface e configurado por injeção. Listagens autenticadas de pedidos usam o adapter com TTL de 60 segundos; o Compose local monta volume dedicado em `CACHE_DIRECTORY`. Cache é descartável e a fonte de verdade continua sendo o banco.
 
-Proposta de uso inicial: consultas de pedidos autenticadas, com chave derivada de namespace, versão dos dados, filtros/paginação normalizados e contexto de autorização. Nunca cachear JWT, senha, credenciais ou respostas 401/403. Valores contêm apenas DTOs públicos. Limitar TTL, tamanho por entrada, ocupação total e concorrência; arquivos com permissões restritas, nomes derivados por hash sem entrada de usuário em caminhos, escrita temporária seguida de rename atômico no mesmo volume e limpeza assíncrona limitada. Arquivo expirado/corrompido ou cache indisponível resulta em miss e consulta ao banco; não ocultar erros do banco.
+Uso implementado: listagens de pedidos autenticadas, com chave derivada de namespace, versão dos dados, filtros/paginação normalizados e contexto de autorização. Nunca cachear JWT, senha, credenciais ou respostas 401/403. Valores contêm apenas DTOs públicos. Limitar TTL, tamanho por entrada, ocupação total e concorrência; arquivos com permissões restritas, nomes derivados por hash sem entrada de usuário em caminhos, escrita temporária seguida de rename atômico no mesmo volume e limpeza assíncrona limitada. Arquivo expirado/corrompido ou cache indisponível resulta em miss e consulta ao banco; não ocultar erros do banco.
 
-Para consistência entre instâncias, proposta: tabela `cache_versions` no primário, com `namespace` como PK textual e `version` inteira. Escritas de pedidos incrementam a versão na mesma transação; cada leitura consulta a versão atual do primário antes de acessar cache. Em miss, capturar versão e dados no mesmo snapshot consistente do primário; gravar sob essa versão. Assim uma alteração/soft delete torna entradas antigas inalcançáveis em todas as instâncias, mesmo se a gravação de cache falhar. O custo de consultar a versão permanece e deve ser medido. Não usar dados da réplica para preencher cache sem a garantia de visibilidade descrita abaixo.
+Para consistência entre instâncias, a implementação usa a tabela `cache_versions` no primário, com `namespace` como PK textual e `version` inteira. Escritas de pedidos incrementam a versão na mesma transação; cada leitura consulta a versão atual do primário antes de acessar cache. Em miss, capturar versão e dados no mesmo snapshot consistente do primário; gravar sob essa versão. Assim uma alteração/soft delete torna entradas antigas inalcançáveis em todas as instâncias, mesmo se a gravação de cache falhar. O custo de consultar a versão permanece e deve ser medido. Não usar dados da réplica para preencher cache sem a garantia de visibilidade descrita abaixo.
 
-Volumes de cache locais por instância no perfil escalado, com a mesma política de versionamento; não depender de locks entre hosts ou volume de filesystem compartilhado para consistência. O cache não armazena sessão nem contadores de segurança. Limitação distribuída de login usa adapter próprio, com proposta de contadores atômicos no primário, sem Redis.
+Volumes de cache locais por instância no perfil escalado, com a mesma política de versionamento; não depender de locks entre hosts ou volume de filesystem compartilhado para consistência. O cache não armazena sessão nem contadores de segurança. Limitação distribuída de login usa adapter próprio, com contadores atômicos no primário, sem Redis.
 
 ## Modelo relacional inicial
 
@@ -116,7 +118,7 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
-Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login, rotas de pedidos e cache local de listagens existem; métricas e integração HTTP continuam pendentes.
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login, rotas de pedidos e cache local de listagens existem; métricas e integração HTTP real estão implementadas.
 
 
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.
@@ -129,7 +131,7 @@ Pool por processo com limites explícitos e timeouts; considerar pooler compatí
 
 Migrations e seed são executados uma única vez no primário e propagados pelo banco. Configurar usuário de replicação dedicado, redes internas, volumes distintos e monitoramento de conexões, fila, timeouts e lag. Réplica não substitui backup. Não prometer failover automático nesta proposta; promoção e reconexão exigem procedimento operacional e prevenção de dois primários.
 
-Número de instâncias, tamanho de pools, carga esperada, limite de lag, política de failover e RPO/RTO seguem pendentes de dimensionamento. A validação funcional do perfil escalado pertence às suítes existentes de integração do backend, sem nova categoria de testes.
+A configuração inicial define duas instâncias no Swarm e pool de dez conexões por processo. Dimensionamento de produção, carga esperada, limite de lag, política de failover e RPO/RTO seguem pendentes. A validação funcional do perfil escalado pertence às suítes existentes de integração do backend, sem nova categoria de testes.
 
 ## Ambientes
 
