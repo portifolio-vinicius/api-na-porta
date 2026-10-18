@@ -1,90 +1,180 @@
-# naPorta — desafio e esteiras
+# naPorta — API de pedidos
 
-Web API de pedidos em NestJS, PostgreSQL e Prisma: autenticação JWT, CRUD, filtros, paginação, exclusão lógica e cache de listagens em arquivos. O frontend não faz parte da entrega atual.
+API REST para gerenciar pedidos, desenvolvida em Node.js 24, NestJS 11, TypeScript, PostgreSQL 18 e Prisma ORM 7. Inclui autenticação JWT, criação e edição de pedidos, filtros, paginação e exclusão lógica. A entrega contempla somente o backend.
 
-**Implementado:** API, integração HTTP real, métricas por rota, ambiente Compose e replicação PostgreSQL em perfil isolado. Swarm/Nginx têm configuração e scripts; deploy público, failover automático e SLA de produção não estão validados. Veja [estado executável e gates](docs/13-esteiras-executaveis.md).
+## Funcionalidades e rotas
+
+Pedidos reúnem cliente, endereço de entrega, itens, previsão de entrega e status. A listagem permite filtrar por número, período de previsão e status, com até 100 registros por página.
+
+| Método | Rota | Função |
+| --- | --- | --- |
+| POST | `/api/v1/auth/login` | Autenticar e obter token JWT |
+| POST | `/api/v1/orders` | Criar pedido |
+| GET | `/api/v1/orders` | Listar com filtros e paginação |
+| GET | `/api/v1/orders/:id` | Consultar por UUID público |
+| PATCH | `/api/v1/orders/:id` | Atualizar campos e status |
+| DELETE | `/api/v1/orders/:id` | Excluir logicamente |
+| GET | `/health/ready` | Verificar conexão com o banco: 200 ou 503 |
+
+Todas as rotas de pedidos exigem `Authorization: Bearer <token>`. Respostas JSON de sucesso usam `code`, `message`, `data` e `requestId`; DELETE retorna 204 sem corpo. Contratos, exemplos de payload e erros estão em [API](docs/05-api.md); status e transições, em [regras de negócio](docs/03-regras-de-negocio.md).
+
+## Arquitetura
 
 ```mermaid
 flowchart LR
     C[Cliente HTTP] --> A[API NestJS + JWT]
-    A --> P[(PostgreSQL primário)]
-    A --> F[Cache local de listagens]
+    A --> U[Casos de uso]
+    U --> P[(PostgreSQL primário)]
+    U --> F[Cache local de listagens]
     P -. Streaming em perfil isolado .-> R[(Standby)]
 ```
 
-Todas as leituras e escritas HTTP usam o primário. O standby não recebe consultas da API. No perfil Swarm, Nginx distribui requisições entre instâncias da API; o banco permanece único. [Arquitetura](docs/04-arquitetura-e-dados.md) e [infraestrutura](docs/16-infraestrutura-e-acessos.md).
+O backend é organizado por funcionalidade. Controllers adaptam o HTTP, casos de uso concentram regras e interfaces isolam persistência, cache e autenticação. Prisma acessa o banco com pool de até dez conexões por processo. O schema é único em `database/`; migrations SQL são aplicadas pelo executor nativo do projeto.
 
-O [repositório público](https://github.com/portifolio-vinicius/api-na-porta) usa PRs para `develop` e promoção por PR para `master`. As proteções registradas e suas evidências estão nos [documentos 09](docs/09-ci-e-seguranca.md) e [14](docs/14-publicacao-e-protecao.md).
+O modelo relacional separa pedidos, snapshots de cliente e endereço, itens e usuários. IDs inteiros ficam na persistência; a API expõe UUIDs. Valores monetários usam decimal no banco e strings na API. A exclusão lógica preserva os registros.
 
-## Organização
+Listagens usam cache assíncrono em arquivos, com TTL de 60 segundos e versão verificada no primário. Alterações de pedidos invalidam essa versão na mesma transação. Leituras simultâneas equivalentes compartilham a consulta; falhas do cache permitem continuar pelo banco. Redis não é dependência.
 
-- `backend/`: API NestJS; instruções em [backend/AGENTS.md](backend/AGENTS.md).
-- `database/`: migrations SQL, seed e operações PostgreSQL; instruções em [database/AGENTS.md](database/AGENTS.md).
-- `docs/`: requisitos e decisões; índice em [docs/README.md](docs/README.md).
-- [AGENTS.md](AGENTS.md): instruções gerais e coordenação do trabalho.
+Todas as leituras e escritas da API usam o primário. A replicação PostgreSQL funciona em perfil Compose isolado, sem consultas HTTP ao standby. Há configuração de Nginx com HTTPS e múltiplas instâncias no Swarm, mantendo banco único; deploy público e failover automático não estão validados.
 
-Os três arquivos `AGENTS.md` são complementares. As regras comuns ficam na raiz e as regras específicas ficam somente no respectivo componente.
+Detalhes em [arquitetura e dados](docs/04-arquitetura-e-dados.md), [infraestrutura](docs/16-infraestrutura-e-acessos.md) e [replicação](docs/17-replicacao.md).
 
-## Tecnologias
+## Segurança
 
-Backend em Node.js 24, NestJS 11, PostgreSQL 18 e Prisma ORM 7 com adapter `pg`. O lockfile fixa as dependências. Organização por feature folders, tipos/interfaces e IDs integer internos/UUIDs públicos estão definidos em [arquitetura](docs/04-arquitetura-e-dados.md), incluindo replicação e escalabilidade.
+- Senhas protegidas com Argon2id; JWT valida assinatura, emissor, audiência e expiração. A duração padrão é de 15 minutos, sem refresh token ou revogação imediata.
+- Login bloqueia o par e-mail/IP por 15 minutos após cinco credenciais inválidas, com contadores compartilhados no PostgreSQL.
+- Validação estrita rejeita campos desconhecidos e entradas inválidas. Erros internos são sanitizados; logs e métricas não incluem senhas, tokens ou payloads.
+- CORS aceita origens explícitas; respostas autenticadas usam `Cache-Control: no-store`. Segredos vêm do ambiente privado.
+- Banco tem permissões separadas para aplicação e migrations. Cache usa limites de tamanho, permissões restritas e nomes derivados por hash.
 
-## Execução
+Usuários autenticados acessam um conjunto compartilhado de pedidos; não há multitenancy, cadastro público ou papéis administrativos. UUID não substitui controle de acesso. A configuração HTTPS pertence ao proxy. As verificações automatizadas de dependências, segredos, código e imagens estão descritas em [segurança](docs/09-ci-e-seguranca.md).
 
-Para compilar: `make check`. Para executar o ambiente completo, configure as variáveis listadas em `make help` e rode `make up` (`ENV=local|demo`, conexões PostgreSQL para host e Compose, JWT e usuário fictício). Migrations e seed completo de seis pedidos/onze itens rodam antes da API; `make down` preserva volumes e `make logs SERVICE=api` acompanha a aplicação. `/health/ready` responde 200 somente quando o banco responde, caso contrário 503. Login: `POST /api/v1/auth/login`. Pedidos: `POST`, `GET` (lista e detalhe), `PATCH` e `DELETE` em `/api/v1/orders`, com JWT Bearer; a exclusão é lógica. Listagens usam cache local de arquivos. `make dbUp` prepara apenas PostgreSQL. A imagem pode ser construída com `docker build -f backend/Dockerfile -t naporta-backend:local .`. A suíte HTTP coleta latência, status e bytes reais por rota. `CACHE_DRIVER=disabled` desativa cache e `CORS_ORIGINS` lista origens permitidas.
+## Execução local
 
+Você precisa de Git, Make, Bash, Python 3, Docker e Docker Compose v2, com o Docker iniciado. O build de Node.js e as ferramentas PostgreSQL rodam nos containers neste roteiro; não é necessário instalar Node ou PostgreSQL no host.
 
-Para validar documentação, execute `make docsCheck`; para operações reais do banco, `make dbIntegration`. Configuração do banco em [operações PostgreSQL](docs/15-postgresql-operacoes.md). `make integration METRICS_DIR=artifacts/performance/<execucao-nova>` executa operações PostgreSQL, streaming, HTTP e ciclo Compose; `make routeReport` valida e agrega a mesma execução. Veja [o catálogo de comandos](docs/07-scripts-e-ambiente.md).
-
-Orientações da [esteira eficiente](docs/10-eficiencia-e-documentacao.md) e da [performance por rota](docs/11-performance-das-rotas.md), com [inventário de rotas](docs/performance/rotas.md). Scripts e workflow de CI existem; a coleta HTTP acompanha a mesma integração, sem suíte separada de carga.
-
-## Tempos, concorrência e conexões da API
-
-Resultados históricos de 18/10/2026, registrados na [análise de latência da tarefa 016](docs/performance/latencia-016.md), a partir do ensaio da tarefa 014 no commit `eaeb1d7b00d0e60dd69a38fa57f2a15519159f4f`. Não são uma nova medição desta revisão nem garantia de capacidade da versão atual.
-
-| Clientes HTTP simultâneos | Requisições/s efetivas | p95 cliente (ms) | p99 cliente (ms) |
-| --- | --- | --- | --- |
-| 1 | 108,93 | 35,02 | 46,30 |
-| 10 | 282,62 | 117,96 | 183,56 |
-| 25 | 266,03 | 274,65 | 401,67 |
-| 50 | 249,01 | 516,68 | 739,96 |
-| 100 | 275,31 | 1.003,70 | 1.511,82 |
-
-Ensaio com 100.000 pedidos/240.000 itens, duas APIs (1 CPU/512 MiB cada), PostgreSQL (2 CPUs/1 GiB), cache de arquivos e cerca de 70% leituras/30% escritas. Cada etapa teve 3 s de aquecimento e 15 s medidos, em modelo fechado de concorrência constante. Foram 17.854 requisições medidas, zero erros e correlação completa das respostas HTTP concluídas com métricas do servidor. Os percentis agregam cenários distintos; consulte a análise para tempos por operação. Não houve Nginx, HTTPS ou leituras em réplica nesse ensaio. O comando opcional `make apiVolume` da tarefa 014 ainda não integra esta base.
-
-A [medição seguinte da listagem](docs/performance/latencia-017.md) aplica os índices de ordenação e o cache ajustado. Ela usa um banco de 2 GiB, uma API no host e janelas mais curtas. Com 25 clientes e invalidação da versão a cada 40 ms, o p50 do cliente foi 11,7 ms nessa execução. Esse número não substitui a tabela histórica acima nem é um SLA.
-
-Concorrência HTTP é a quantidade de clientes simultâneos do ensaio; não informa quantas conexões PostgreSQL estavam abertas. Os limites abaixo são configuração, sem medição de ocupação do pool:
-
-| Configuração implementada | Valor |
-| --- | --- |
-| Pool PostgreSQL por processo de API | Até 10 conexões |
-| Duas instâncias de API | Até 20 conexões somadas |
-| Timeout para conexão ao PostgreSQL | 5 s |
-| Conexão ociosa no pool | 10 s |
-| `statement_timeout` / `lock_timeout` | 10 s / 5 s |
-| Sessão ociosa em transação | 10 s |
-| HTTP `requestTimeout` / `headersTimeout` | 15 s / 10 s |
-
-Fontes: [adapter PostgreSQL](backend/src/shared/database/prismaService.ts) e [bootstrap HTTP](backend/src/main.ts). Timeouts HTTP de recebimento não representam um SLA de execução da rota. O orçamento Swarm, incluindo rolling update e roles do banco, está no [documento 16](docs/16-infraestrutura-e-acessos.md).
-
-A integração obrigatória registra tempo no servidor e no cliente, status HTTP, cache e bytes de corpo por rota. `p95` é o valor no posto `ceil(0,95 × N)` das amostras ordenadas; grupos com menos de 100 amostras são sinalizados como descritivos. Não há coleta implementada de conexões ativas/ociosas, espera no pool ou conexões TCP HTTP.
+**1. Obtenha o código e entre na raiz:**
 
 ```sh
-# Execute na raiz, com Docker ativo e pré-requisitos configurados.
-# Escolha um diretório inexistente a cada execução.
-make integration METRICS_DIR=artifacts/performance/revisao-001
-make routeReport METRICS_DIR=artifacts/performance/revisao-001
+git clone https://github.com/portifolio-vinicius/api-na-porta.git
+cd api-na-porta
+docker info >/dev/null
+docker compose version
 ```
 
-O mesmo diretório recebe `manifest.json`, `samples.jsonl`, `routes.json` e `routes.md`. A agregação exige artefatos do commit atual e execução completa. [Contrato das métricas](docs/13-esteiras-executaveis.md) e [inventário de rotas](docs/performance/rotas.md).
+Se já tem o repositório, use sua pasta atual. Execute os próximos blocos no mesmo terminal.
 
-## Entrega
+**2. Configure um ambiente local com credenciais geradas na sua máquina:**
 
-O repositório já está público. Antes da entrega da aplicação: validar o fluxo completo, registrar a execução real, revisar segredos/dados pessoais e conferir a licença dos arquivos. A integração em develop depende de todos os gates aprovados no commit candidato; não há bypass das proteções. O envio do link por e-mail será realizado pelo responsável pela entrega. Serverless fica fora do escopo inicial.
+```sh
+export ENV=local
+export PGHOST=127.0.0.1 PGPORT=5432 DB_PORT=5432
+export PGUSER=postgres PGDATABASE=naporta_local
+export DB_CONTAINER=naporta-naporta-local-db
+export API_HOST_PORT=3000
 
-## Desenvolvimento paralelo
+export PGPASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export APP_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export MIGRATOR_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+export JWT_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+export JWT_ISSUER=naporta-local JWT_AUDIENCE=naporta-api
+export DEMO_USER_EMAIL=demo@example.test
+export DEMO_USER_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
 
-`make startTask TYPE=feature TICKET=123 NAME=descricao FILES=backend/src/features/exemplo,docs/tasks/123.md` cria branch de `origin/develop` atualizado e worktree próprio. Complete e commite o plano, depois use `make taskActivate TICKET=123`; a ativação recusa arquivos ou diretórios sobrepostos. `make taskStatus` mostra reservas. `make taskRelease TICKET=123` libera a tarefa somente após integração. Regras em [fluxo de desenvolvimento](docs/06-fluxo-de-desenvolvimento.md).
+export API_DATABASE_URL="postgresql://naporta_app:${APP_PASSWORD}@db:5432/${PGDATABASE}"
+export MIGRATOR_API_URL="postgresql://naporta_migrator:${MIGRATOR_PASSWORD}@db:5432/${PGDATABASE}"
+```
 
-Para verificar o perfil de réplica isolado: `make replicaIntegration`. Para validar a subida e persistência do ambiente completo: `make composeIntegration`. Operação manual da réplica em [17 — Replicação](docs/17-replicacao.md). O ambiente Swarm continua com PostgreSQL único; dimensionamento produtivo e deploy ficam com a operação.
+Guarde os valores em um local privado se precisar retomar em outro terminal; não os adicione ao Git. Em volumes já existentes, reutilize as credenciais originais em vez de gerar novas. As URLs usam `db:5432`, endereço interno do Compose. `DB_CONTAINER` faz as operações SQL usarem o cliente PostgreSQL do container.
+
+**3. Suba a aplicação e confira a prontidão:**
+
+```sh
+make up
+curl --fail-with-body "http://127.0.0.1:${API_HOST_PORT}/health/ready"
+```
+
+O comando prepara o banco, aplica migrations, cria seis pedidos/onze itens fictícios e o usuário de demonstração, constrói a API e aguarda sua prontidão. A primeira execução pode demorar pelo download das imagens e dependências. A API fica em `http://127.0.0.1:3000/api/v1`; a prontidão deve retornar HTTP 200.
+
+**4. Faça login e consulte pedidos:**
+
+```sh
+TOKEN="$(python3 - <<'PYLOGIN'
+import json
+import os
+import urllib.request
+
+url = 'http://127.0.0.1:' + os.environ['API_HOST_PORT'] + '/api/v1/auth/login'
+payload = json.dumps({
+    'email': os.environ['DEMO_USER_EMAIL'],
+    'password': os.environ['DEMO_USER_PASSWORD'],
+}).encode()
+request = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+with urllib.request.urlopen(request) as response:
+    print(json.load(response)['data']['accessToken'])
+PYLOGIN
+)"
+curl --fail-with-body "http://127.0.0.1:${API_HOST_PORT}/api/v1/orders?page=1&pageSize=20" \
+  -H "Authorization: Bearer ${TOKEN}"
+unset TOKEN
+```
+
+O login usa as credenciais configuradas no passo 2 e extrai o token de `data.accessToken`. Exemplos de criação, atualização, filtros e erros estão no [contrato da API](docs/05-api.md).
+
+**Logs e encerramento:**
+
+```sh
+make logs SERVICE=api
+# Ctrl+C encerra o acompanhamento dos logs.
+make down
+```
+
+`make down` preserva banco e cache. Para subir novamente, reutilize as mesmas variáveis e execute `make up`. Se a porta 3000 estiver ocupada, altere `API_HOST_PORT`; para a porta do banco, ajuste `DB_PORT` e `PGPORT` juntos. Em falha de inicialização, consulte `make logs SERVICE=api` ou `make logs SERVICE=db`.
+
+Configuração completa e comandos: [scripts e ambiente](docs/07-scripts-e-ambiente.md#ambiente-do-usuário-e-segredos). Permissões, migrations e volumes: [operações PostgreSQL](docs/15-postgresql-operacoes.md). Pré-requisitos dos comandos de validação: [esteiras executáveis](docs/13-esteiras-executaveis.md).
+
+Para compilar e verificar a qualidade, use `make check`. `make integration METRICS_DIR=artifacts/performance/<execucao-nova>` executa integração com PostgreSQL, réplica, seed, HTTP e ciclo Compose; `make routeReport` agrega as métricas do mesmo diretório. Operações de backup, restauração e rollback estão em [operações PostgreSQL](docs/15-postgresql-operacoes.md).
+
+## Desempenho e limites
+
+Há coleta de latência no servidor e no cliente, status HTTP, cache e bytes por rota. Os resultados abaixo são históricos de 18/10/2026, com ambientes distintos; não representam SLA nem uma nova medição desta revisão.
+
+| Ensaio | Resultado registrado |
+| --- | --- |
+| Volume: 100 mil pedidos, duas APIs, 10 clientes simultâneos | 282,62 requisições/s; p95 de 117,96 ms |
+| Mesmo ensaio, 100 clientes simultâneos | 275,31 requisições/s; p95 de 1.003,70 ms |
+| Otimização de listagem: uma API, 25 clientes e alterações concorrentes | p95 de 499,33 ms antes e 34,11 ms depois, em janela de 8 s |
+
+O ensaio de volume registrou 17.854 requisições e zero erros. A otimização posterior adicionou índices de pedidos ativos, compartilhamento de consultas e menor custo de manutenção do cache. Consulte condições, commits e limitações na [análise de volume](docs/performance/latencia-016.md) e na [medição da otimização](docs/performance/latencia-017.md).
+
+O pool permite até dez conexões PostgreSQL por processo, com timeout de conexão de cinco segundos. Clientes HTTP simultâneos não equivalem a conexões abertas no banco. Não há coleta de ocupação ou espera no pool; contagens exatas e páginas profundas continuam sendo pontos de atenção. Capacidade produtiva, lag aceitável e recuperação de falhas ainda exigem dimensionamento.
+
+## Histórico e decisões
+
+| Etapa | Decisão e motivo |
+| --- | --- |
+| Escopo inicial | Entregar somente a API de pedidos; frontend, pagamentos, estoque e Serverless ficaram fora do escopo. |
+| Base técnica | NestJS, PostgreSQL e Prisma para o domínio relacional; TypeScript estrito e organização por funcionalidade para separar contratos e responsabilidades. |
+| Modelagem | IDs internos inteiros e UUIDs públicos; snapshots de cliente/endereço preservam os dados de cada pedido, e exclusão lógica mantém o histórico. |
+| Autenticação e contratos | JWT, Argon2id, validação estrita e envelopes JSON centralizados para uniformizar consumo e tratamento de erros. |
+| Cache e consistência | Cache local substituível por interface, sem Redis; versionamento transacional preserva a invalidação entre instâncias. Consultas permanecem no primário para enxergar escritas recentes. |
+| Operação | Compose para execução reproduzível, migrations SQL com executor único e réplica isolada para validar propagação sem prometer failover. |
+| Medição e otimização | Primeiro medir consultas e concorrência; depois adicionar índices e reduzir consultas repetidas e varreduras do cache. A contagem exata foi preservada. |
+
+As decisões e evidências completas permanecem em [escopo e premissas](docs/01-escopo-e-premissas.md), [arquitetura](docs/04-arquitetura-e-dados.md) e [registros de tarefas](docs/tasks). O [índice da documentação](docs/README.md) reúne as demais referências técnicas.
+
+## Onde encontrar mais detalhes
+
+| Assunto | Referência |
+| --- | --- |
+| Escopo e requisitos | [Premissas e decisões](docs/01-escopo-e-premissas.md) · [Requisitos](docs/02-requisitos.md) |
+| Pedidos, status e transições | [Regras de negócio](docs/03-regras-de-negocio.md) |
+| Rotas, JSON, JWT e erros | [Contrato da API](docs/05-api.md) |
+| Camadas, modelo de dados e cache | [Arquitetura e dados](docs/04-arquitetura-e-dados.md) |
+| Variáveis, subida e seed | [Scripts e ambiente](docs/07-scripts-e-ambiente.md) |
+| Segurança e verificações automatizadas | [CI e segurança](docs/09-ci-e-seguranca.md) |
+| Integração e estado das validações | [Validação](docs/08-validacao.md) · [Estado executável](docs/13-esteiras-executaveis.md) |
+| Coleta de métricas e resultados | [Performance das rotas](docs/11-performance-das-rotas.md) · [Inventário](docs/performance/rotas.md) |
+| Migrations, backup, restauração e rollback | [Operações PostgreSQL](docs/15-postgresql-operacoes.md) |
+| HTTPS, múltiplas instâncias e réplica | [Infraestrutura](docs/16-infraestrutura-e-acessos.md) · [Replicação](docs/17-replicacao.md) |
+| Histórico detalhado | [Registros de tarefas](docs/tasks) · [Índice completo](docs/README.md) |
