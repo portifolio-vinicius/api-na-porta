@@ -52,6 +52,8 @@ Resultados históricos de 18/10/2026, registrados na [análise de latência da t
 
 Ensaio com 100.000 pedidos/240.000 itens, duas APIs (1 CPU/512 MiB cada), PostgreSQL (2 CPUs/1 GiB), cache de arquivos e cerca de 70% leituras/30% escritas. Cada etapa teve 3 s de aquecimento e 15 s medidos, em modelo fechado de concorrência constante. Foram 17.854 requisições medidas, zero erros e correlação completa das respostas HTTP concluídas com métricas do servidor. Os percentis agregam cenários distintos; consulte a análise para tempos por operação. Não houve Nginx, HTTPS ou leituras em réplica nesse ensaio. O comando opcional `make apiVolume` da tarefa 014 ainda não integra esta base.
 
+A [medição seguinte da listagem](docs/performance/latencia-017.md) aplica os índices de ordenação e o cache ajustado. Ela usa um banco de 2 GiB, uma API no host e janelas mais curtas. Com 25 clientes e invalidação da versão a cada 40 ms, o p50 do cliente foi 11,7 ms nessa execução. Esse número não substitui a tabela histórica acima nem é um SLA.
+
 Concorrência HTTP é a quantidade de clientes simultâneos do ensaio; não informa quantas conexões PostgreSQL estavam abertas. Os limites abaixo são configuração, sem medição de ocupação do pool:
 
 | Configuração implementada | Valor |
