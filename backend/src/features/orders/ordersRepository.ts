@@ -5,7 +5,7 @@ import { PrismaService } from '../../shared/database/prismaService.js';
 import { assertOrderUpdateAllowed } from './orderModel.js';
 import type { CreateOrderModel, OrderModel, UpdateOrderModel } from './orderModel.js';
 import { DuplicateOrderNumberError } from './ordersTypes.js';
-import type { OrderFilters, OrderPage } from './ordersTypes.js';
+import type { OrderFilters, OrderListing } from './ordersTypes.js';
 import type { OrdersRepositoryInterface } from './ordersRepositoryInterface.js';
 
 const orderRelations = {
@@ -13,6 +13,13 @@ const orderRelations = {
   address: true,
   items: { where: { deletedAt: null } },
 } satisfies Prisma.OrderInclude;
+
+const listOrder = [
+  { createdAt: 'desc' },
+  { id: 'desc' },
+] satisfies Prisma.OrderOrderByWithRelationInput[];
+
+const repeatableRead = { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead };
 
 type OrderWithRelations = Prisma.OrderGetPayload<{ include: typeof orderRelations }>;
 
@@ -57,32 +64,61 @@ export class OrdersRepository implements OrdersRepositoryInterface {
     return row ? mapOrder(row) : null;
   }
 
-  async findActive(filters: OrderFilters): Promise<OrderPage> {
-    const startDate = filters.startDate
-      ? new Date(`${filters.startDate}T00:00:00.000Z`)
-      : undefined;
-    const endDate = filters.endDate
-      ? new Date(`${filters.endDate}T00:00:00.000Z`)
-      : undefined;
-    const where: Prisma.OrderWhereInput = {
-      deletedAt: null,
-      ...(filters.number ? { number: filters.number } : {}),
-      ...(filters.status ? { status: filters.status } : {}),
-      ...(startDate || endDate
-        ? { expectedDeliveryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
-        : {}),
-    };
+  async findActive(filters: OrderFilters, withVersion = false): Promise<OrderListing> {
+    const where = activeWhere(filters);
+    // number is unique, so the page total is 0 or 1 and does not need a separate COUNT.
+    if (filters.number !== undefined) {
+      return this.findUniqueNumber(where, filters.page, withVersion);
+    }
+    if (withVersion) {
+      const [rows, total, version] = await this.prisma.$transaction([
+        this.prisma.order.findMany({
+          where,
+          include: orderRelations,
+          orderBy: listOrder,
+          skip: (filters.page - 1) * filters.pageSize,
+          take: filters.pageSize,
+        }),
+        this.prisma.order.count({ where }),
+        this.prisma.cacheVersion.findUnique({ where: { namespace: 'orders' }, select: { version: true } }),
+      ], repeatableRead);
+      return { rows: rows.map(mapOrder), total, version: requiredVersion(version) };
+    }
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
         include: orderRelations,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: listOrder,
         skip: (filters.page - 1) * filters.pageSize,
         take: filters.pageSize,
       }),
       this.prisma.order.count({ where }),
-    ], { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
-    return { rows: rows.map(mapOrder), total };
+    ], repeatableRead);
+    return { rows: rows.map(mapOrder), total, version: null };
+  }
+
+  private async findUniqueNumber(
+    where: Prisma.OrderWhereInput,
+    page: number,
+    withVersion: boolean,
+  ): Promise<OrderListing> {
+    if (withVersion) {
+      const [match, version] = await this.prisma.$transaction([
+        this.prisma.order.findFirst({ where, include: orderRelations, orderBy: listOrder }),
+        this.prisma.cacheVersion.findUnique({ where: { namespace: 'orders' }, select: { version: true } }),
+      ], repeatableRead);
+      return {
+        rows: page === 1 && match ? [mapOrder(match)] : [],
+        total: match ? 1 : 0,
+        version: requiredVersion(version),
+      };
+    }
+    const match = await this.prisma.order.findFirst({ where, include: orderRelations, orderBy: listOrder });
+    return {
+      rows: page === 1 && match ? [mapOrder(match)] : [],
+      total: match ? 1 : 0,
+      version: null,
+    };
   }
 
   async getCacheVersion(): Promise<bigint> {
@@ -174,6 +210,24 @@ export class OrdersRepository implements OrdersRepositoryInterface {
       return true;
     });
   }
+}
+
+function activeWhere(filters: OrderFilters): Prisma.OrderWhereInput {
+  const startDate = filters.startDate ? new Date(`${filters.startDate}T00:00:00.000Z`) : undefined;
+  const endDate = filters.endDate ? new Date(`${filters.endDate}T00:00:00.000Z`) : undefined;
+  return {
+    deletedAt: null,
+    ...(filters.number ? { number: filters.number } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(startDate || endDate
+      ? { expectedDeliveryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+      : {}),
+  };
+}
+
+function requiredVersion(version: { version: bigint } | null): bigint {
+  if (!version) throw new Error('Versão de cache de pedidos ausente.');
+  return version.version;
 }
 
 function isDuplicateNumberError(error: unknown): boolean {

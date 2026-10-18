@@ -16,6 +16,10 @@ export interface OrderPage {
   readonly total: number;
 }
 
+export interface OrderListing extends OrderPage {
+  readonly version: bigint | null;
+}
+
 export interface PublicOrder {
   readonly id: string;
   readonly number: string;
