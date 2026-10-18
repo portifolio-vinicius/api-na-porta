@@ -29,6 +29,8 @@ const config = {
 };
 assert(['file', 'disabled'].includes(config.cache), 'LOAD_CACHE inválido');
 assert(config.stages.length <= 10 && config.stages.length > 0 && config.stages.every(n => Number.isInteger(n) && n > 0 && n <= 200), 'LOAD_STAGES exige até dez valores entre 1 e 200');
+const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+const sourceInitiallyClean = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() === '';
 const runId = randomUUID();
 const suffix = randomBytes(6).toString('hex');
 const database = `naporta_test_volume_${suffix}`;
@@ -379,9 +381,10 @@ const summary = phases.map(p => {
     }) };
 });
 const errors = samples.filter(s => s.error).length;
-const complete = !interrupted && !failure && !reachedLimit && missingServerSamples === 0 && phases.length === config.stages.length * (config.warmupSeconds ? 2 : 1);
+const sourceUnchanged = sourceInitiallyClean && execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim() === sourceCommit && execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() === '';
+const complete = sourceUnchanged && !interrupted && !failure && !reachedLimit && missingServerSamples === 0 && phases.length === config.stages.length * (config.warmupSeconds ? 2 : 1);
 const passed = complete && errors === 0 && cleanupOk;
-const report = { runId, timestamp: new Date().toISOString(), commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+const report = { runId, timestamp: new Date().toISOString(), commit: sourceCommit, sourceUnchanged,
   complete, passed, failure, interrupted, cleanupOk, reachedLimit, errors, missingServerSamples, config, setup, finalAudit,
   environment: { runtime: process.version, platform: platform(), arch: arch(), hostCpuCount: cpus().length, hostMemoryBytes: totalmem(),
     postgresImage, apiImage: imageTag, apiCpuLimit: 1, apiMemoryMiB: 512, databaseCpuLimit: 2, databaseMemoryMiB: 1024,
