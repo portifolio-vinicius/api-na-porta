@@ -244,7 +244,12 @@ try {
   await pool.query('ALTER TABLE orders RENAME TO orders_temporarily_unavailable');
   try {
     await request(base, 'GET', `/api/v1/orders/${randomUUID()}`, 500, 'database-unavailable');
+    await Promise.all(Array.from({ length: 3 }, (_, index) =>
+      request(base, 'GET', '/api/v1/orders?page=2&pageSize=7', 500, `shared-list-database-failure-${index}`)));
   } finally { await pool.query('ALTER TABLE orders_temporarily_unavailable RENAME TO orders'); }
+  await request(base, 'GET', '/health/ready', 200, 'ready-after-list-failure');
+  assert.equal((await request(base, 'GET', '/api/v1/orders?page=2&pageSize=7', 200, 'list-recovers-after-failure')).meta.total, 0);
+  assert.equal((await request(base, 'GET', '/api/v1/orders?page=2&pageSize=7', 200, 'list-cache-after-recovery')).meta.total, 0);
   complete = true;
 } catch (error) {
   process.stderr.write(`Integração HTTP falhou: ${error.message}\n`);

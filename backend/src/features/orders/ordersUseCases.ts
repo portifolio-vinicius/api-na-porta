@@ -87,9 +87,11 @@ export class OrdersUseCases {
     if (this.inflight.size >= maxInflightLists) return this.loadFresh(version, key, filters);
     const pending = this.loadFresh(version, key, filters);
     this.inflight.set(flightKey, pending);
-    void pending.finally(() => {
+    const release = (): void => {
       if (this.inflight.get(flightKey) === pending) this.inflight.delete(flightKey);
-    });
+    };
+    // Handle both outcomes without creating an unobserved rejected cleanup promise.
+    void pending.then(release, release);
     return pending;
   }
 
