@@ -122,8 +122,19 @@ function wire(base, method, path, body, authenticated = true, requestId = random
       response.on('error', () => finish({ status: null, error: 'transport', responseBodyBytes: bytes }));
       response.on('end', () => {
         try {
-          finish({ status: response.statusCode, body: bytes ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : undefined, responseBodyBytes: bytes });
-        } catch { finish({ status: response.statusCode, error: 'invalid-json', responseBodyBytes: bytes }); }
+          let body = bytes ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : undefined;
+          if (response.statusCode >= 200 && response.statusCode < 300 && response.statusCode !== 204) {
+            assert.equal(body?.code, response.statusCode === 201 ? 'CREATED' : 'SUCCESS');
+            assert.equal(typeof body.message, 'string');
+            assert.equal(body.requestId, requestId);
+            assert.equal(response.headers['x-request-id'], requestId);
+            assert('data' in body);
+            body = body.data;
+          }
+          finish({ status: response.statusCode, body, responseBodyBytes: bytes });
+        } catch (error) {
+          finish({ status: response.statusCode, error: error instanceof SyntaxError ? 'invalid-json' : 'invalid-envelope', responseBodyBytes: bytes });
+        }
       });
     });
     req.on('error', error => finish({ status: null, error: 'transport', transportCode: /^[A-Z0-9_]{1,24}$/.test(error.code || '') ? error.code : 'UNKNOWN', reusedSocket: req.reusedSocket, responseBodyBytes: 0 }));
@@ -323,6 +334,7 @@ try {
   setupPhase = 'login';
   const login = await wire(clients[0], 'POST', '/api/v1/auth/login', { email: 'volume@example.test', password: loginPassword }, false);
   assert.equal(login.status, 200, 'Login real falhou');
+  assert(!login.error, 'Envelope do login real inválido');
   bearer = login.body.accessToken;
   assert.equal(JSON.parse(Buffer.from(bearer.split('.')[1], 'base64url')).sub, userId);
   setup = { ...setup, seedSeconds, preparationSeconds: (performance.now() - buildStart) / 1000, seedAudit };
