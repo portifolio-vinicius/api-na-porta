@@ -1,0 +1,45 @@
+services:
+  primary:
+    image: ${POSTGRES_IMAGE:?required}
+    environment:
+      POSTGRES_USER: ${PGUSER:?required}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?required}
+      POSTGRES_DB: ${PGDATABASE:?required}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?required}
+    entrypoint: [/bin/sh, -c, 'cp /replication/primary-init.sh /docker-entrypoint-initdb.d/replication.sh; chmod 644 /docker-entrypoint-initdb.d/replication.sh; exec docker-entrypoint.sh "$$@"', --]
+    command: [postgres, -c, wal_level=replica, -c, max_wal_senders=5, -c, max_replication_slots=5, -c, wal_keep_size=128MB, -c, max_slot_wal_keep_size=512MB]
+    volumes:
+      - primary_data:/var/lib/postgresql
+      - ./primary-init.sh:/replication/primary-init.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [database]
+  standby:
+    image: ${POSTGRES_IMAGE:?required}
+    environment:
+      PGUSER: ${PGUSER:?required}
+      PGDATABASE: ${PGDATABASE:?required}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?required}
+      PGDATA: /var/lib/postgresql/18/docker
+    entrypoint: [/bin/sh, /replication/standby-init.sh]
+    volumes:
+      - standby_data:/var/lib/postgresql
+      - ./standby-init.sh:/replication/standby-init.sh:ro
+    depends_on:
+      primary:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$PGUSER" -d "$$PGDATABASE"']
+      interval: 2s
+      timeout: 3s
+      retries: 45
+    networks: [database]
+networks:
+  database:
+    internal: true
+volumes:
+  primary_data:
+  standby_data:

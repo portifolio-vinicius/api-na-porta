@@ -1,6 +1,18 @@
 # Esteiras executáveis
 
-Implementadas em 2026-10-16 após autorização para sair da etapa documental. O backend HTTP continua pendente; operações PostgreSQL reais foram adicionadas posteriormente e estão no [documento 15](15-postgresql-operacoes.md). Este documento registra o estado executável; os documentos 07–11 conservam também contratos futuros.
+As esteiras incluem backend NestJS, autenticação JWT, CRUD/filtros/soft delete, cache de arquivos, Compose e perfil PostgreSQL streaming. O executor SQL nativo permanece único. O trabalho foi desenvolvido em branches/worktrees separados, com responsáveis por arquivo; coordenação em [009](tasks/009.md).
+
+## Composição atual e limites
+
+`make integration` executa operações PostgreSQL, replicação física real, suíte HTTP com banco/cache isolados e ciclo Compose com reinício. O perfil HTTP usa primário por consistência; o standby separado comprova propagação e lag, sem roteamento HTTP ou promoção automática. Não há Swarm multi-host, deploy público ou garantia de capacidade produtiva validada.
+
+A API fornece as sete rotas do contrato. Cache é substituível por `CACHE_DRIVER=disabled`; as instâncias usam arquivos locais e versão transacional compartilhada no primário. Limitação de login reserva tentativas atomicamente antes do hash, impedindo ultrapassagem do limite por verificações paralelas. JWT exige assinatura HS256, emissor, audiência, expiração e UUID público. Casos de uso não importam NestJS/Prisma/filesystem.
+
+A instrumentação cobre middleware, guards, validação e respostas. Logs contêm somente correlação técnica, rota normalizada, método, status e duração. A suíte junta tempos reais do servidor/cliente e bytes do corpo; não registra payloads sensíveis. Erros 400/401/404/409/429/500 e resposta 204 são verificados. Os artefatos de execução permanecem ignorados pelo Git, vinculados ao commit candidato e validados antes da publicação. Poucas amostras não estabelecem SLA.
+
+`make up/down/logs` compõe banco, migrations, seed fictício, usuário controlado, API e cache. Usa clientes do container quando `DB_CONTAINER` está definido. Imagens locais têm tag por banco/projeto, evitando que builds de worktrees diferentes disputem a mesma tag. A imagem runtime executa com UID 1000, sem npm/yarn; Node e imagem estão fixados por versão/digest. No build, Prisma gera o cliente no layout de diretórios do repositório, sem depender de arquivos gerados no host.
+
+Evidências de desenvolvimento: qualidade estática aprovada, 33 verificações de infraestrutura, 22 cenários reais de replicação e ciclo Compose completo aprovados. A suíte HTTP e scanners completos têm execução final registrada na tarefa 009 e nos checks do PR. Os registros abaixo conservam o histórico anterior; não descrevem a capacidade atual da aplicação.
 
 ## Uso
 
@@ -40,7 +52,7 @@ make docsCheck
 | `validateFlow` | Exige commit, árvore limpa, branch/destino válidos e ancestralidade da referência remota local |
 | `preMerge` | Valida fluxo e executa CI; referência remota deve ser atualizada pelo responsável antes da execução |
 
-O backend deve fornecer `backend/package.json`, `backend/package-lock.json`, `backend/src`, `backend/test` e `backend/Dockerfile`. As operações de banco já são verificadas por `make dbIntegration`, executado antes dos pré-requisitos HTTP pelo wrapper `make integration`. A futura suíte `test:integration` deve iniciar e limpar banco/cache reais isolados, aplicar migrations e executar os cenários do documento 08, incluindo perfil completo. O wrapper não implementa esse ambiente nem permite substituir esses testes por mocks. Geração do Prisma, quando necessária, deve ser explicitamente incorporada ao build/preparo do backend; instalação de dependências não executa scripts de terceiros automaticamente.
+O backend fornece manifesto, lockfile, código, schema Prisma e Dockerfile. `make check` instala dependências, gera Prisma Client e executa lint, typecheck e build. `test:integration` existe em `backend/package.json` e executa `backend/test/integration/httpIntegration.mjs` contra NestJS e PostgreSQL reais, com recursos isolados. O wrapper `make integration` executa, nesta ordem, operações PostgreSQL, replicação, seed de demonstração, suíte HTTP, ciclo Compose e validação dos artefatos. Falha em qualquer etapa interrompe o wrapper; mocks não substituem a integração.
 
 Segurança: npm audit inclui dependências de desenvolvimento e bloqueia high/critical; Gitleaks verifica arquivos e histórico disponível com saída redigida; Semgrep usa regras locais para execução dinâmica, shell e queries inseguras; Trivy verifica configuração e imagem construída. Gitleaks 8.30.1, Semgrep 1.181.0 e Trivy 0.76.0 usam imagens fixadas por digest. Regras SAST iniciais têm cobertura limitada e devem ser ampliadas conforme o código surgir. Falha de ferramenta, download ou pré-requisito reprova a etapa. O scan de imagem não monta o socket Docker no scanner.
 
@@ -53,7 +65,7 @@ A suíte escreve em `METRICS_DIR` os arquivos `manifest.json` e `samples.jsonl`.
 
 Cada linha de amostras contém exatamente: `runId`, `method`, `route` (template do inventário), `scenario` (identificador técnico), `statusCode`, `expectedStatusCode`, `serverDurationMs`, `clientDurationMs`, `requestBodyBytes`, `responseBodyBytes`, `cacheOutcome` (`hit`, `miss`, `bypass`), `databaseRole` (`primary`, `replica`), `outcome` e `profile`.
 
-O validador exige métricas finitas não negativas, bytes inteiros, resposta 204 vazia, status observado igual ao esperado, execução completa, mesmo commit/run/profile, sucesso nas sete rotas e cobertura dos erros 400/401/404/409/429/500. Aborto ou coleta incompleta reprova o relatório. O diagnóstico incompleto não inventa medições. Metadados adicionais de runner, pools, aquecimento, cobertura detalhada dos casos e instrumentação HTTP do documento 11 ainda dependem da aplicação e de evolução do schema.
+O validador exige métricas finitas não negativas, bytes inteiros, resposta 204 vazia, status observado igual ao esperado, execução completa, mesmo commit/run/profile, sucesso nas sete rotas e cobertura dos erros 400/401/404/409/429/500. Aborto ou coleta incompleta reprova o relatório. O diagnóstico incompleto não inventa medições. A instrumentação HTTP já existe. Metadados adicionais de runner, pools, aquecimento e cobertura detalhada dos casos exigem evolução do schema; campos desconhecidos são rejeitados.
 
 Relatórios agrupam método, rota, cenário, status, cache, banco e perfil. Latências usam nearest-rank para p50/p95/p99; bytes são de corpo com compressão desligada. Poucas amostras são sinalizadas. Os artefatos são ignorados pelo Git.
 
@@ -81,7 +93,7 @@ Registro histórico: execuções realizadas uma por vez, antes do commit inicial
 | `make ci` | Reprovado; coleta as falhas e não aprova o conjunto |
 | `make preMerge TARGET=develop` | Reprovado: repositório sem commit inicial |
 
-Workflow validado com actionlint 1.7.12, sem erros; análise ShellCheck não executada. A sintaxe shell foi verificada com `bash -n`. Os cenários sintéticos rodam em diretórios temporários e não representam integração ou medições reais da API. Na execução remota posterior, Gitleaks aprovou arquivos e histórico. Os demais scanners, build e testes funcionais completos continuam bloqueados pela ausência do backend; veja o documento 14.
+Workflow validado com actionlint 1.7.12, sem erros; análise ShellCheck não executada. A sintaxe shell foi verificada com `bash -n`. Os cenários sintéticos rodam em diretórios temporários e não representam integração ou medições reais da API. Na execução remota daquele período, Gitleaks aprovou arquivos e histórico; os demais checks estavam bloqueados pela ausência do backend. Esse bloqueio é histórico: o backend e a suíte existem na base atual. Veja o documento 14 para o registro original.
 
 ## Registro histórico anterior aos scripts PostgreSQL: banco e worktrees
 
@@ -89,4 +101,4 @@ Após a execução acima, foram tentados separadamente `make migrate ENV=local`,
 
 O script existente `validate-flow.sh` foi exercitado em repositório Git e remoto bare locais descartáveis, com worktree real criado por comando Git manual. Oito verificações passaram: feature limpa para develop; isolamento de alterações nos arquivos; bloqueio de árvore suja; bloqueio de destino inválido; bloqueio de feature para master; bloqueio de develop para develop; aceitação de develop para master com ancestralidade válida; remoção do worktree limpo preservando o repositório base.
 
-Essa verificação não exercitou `startTask`, PRs, proteção de branches, conflitos de merge ou recuperação após falha na criação de worktree. O fluxo automatizado completo de desenvolvimento permanece pendente. As oito verificações de Git/worktree agora integram `make pipelineCheck`, totalizando 58 verificações naquele registro. A versão atual acrescenta checks dos scripts PostgreSQL; a contagem é emitida por `make pipelineCheck`.
+Essa verificação não exercitou `startTask`, PRs, proteção de branches, conflitos de merge ou recuperação após falha na criação de worktree. Naquele registro, o fluxo automatizado completo de desenvolvimento permanecia pendente. As oito verificações de Git/worktree agora integram `make pipelineCheck`, totalizando 58 verificações naquele registro. A versão atual acrescenta checks dos scripts PostgreSQL; a contagem é emitida por `make pipelineCheck`.

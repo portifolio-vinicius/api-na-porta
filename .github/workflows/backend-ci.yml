@@ -28,6 +28,7 @@ jobs:
         with:
           node-version: '24.21.0'
       - run: make pipelineCheck
+      - run: make infraCheck
       - run: make taskPlan
       - run: make check
   backend-security:

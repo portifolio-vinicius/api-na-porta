@@ -276,8 +276,14 @@ def restore(pg):
 
 
 def seed(pg):
+    profile = os.environ.get('SEED_PROFILE', 'basic')
+    if profile not in ('basic', 'full'):
+        fail('SEED_PROFILE deve ser basic ou full.')
     items = migrations()
     body = (ROOT / 'database/seeds/demo.sql').read_text()
+    if profile == 'full':
+        body += '\n' + (ROOT / 'database/seeds/scenarios.sql').read_text()
+    body += "\nUPDATE public.cache_versions SET version = version + 1 WHERE namespace = 'orders';\n"
     guard = block(f"IF NOT EXISTS (SELECT 1 FROM public._naporta_migrations WHERE name={literal(items[-1]['name'])}) THEN RAISE EXCEPTION 'Apply all migrations before seed'; END IF;")
     pg.sql('BEGIN;\n' + preamble() + ledger() + validate(items) + guard + body + '\nCOMMIT;')
     print('Seed fictício aplicado sem modificar registros existentes.')

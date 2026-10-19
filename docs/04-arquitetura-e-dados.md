@@ -2,13 +2,15 @@
 
 ## Separação e feature folders
 
-Organização confirmada por funcionalidade no backend. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura futura ilustrativa:
+Organização confirmada por funcionalidade. Bootstrap NestJS, validação de configuração, prontidão PostgreSQL, adapter Prisma, autenticação, rotas de pedidos e cache local de listagens estão implementados; métricas e integração HTTP real estão implementadas. Não criar diretórios globais de controllers, services ou repositories reunindo funcionalidades diferentes. Estrutura:
 
 ```text
 backend/
   src/main.ts                Bootstrap e composição da aplicação
   src/appModule.ts           Módulo raiz e registro de dependências
-  src/features/orders/
+  src/features/health/
+    healthController.ts
+  src/features/orders/         Criação/consulta/paginação/filtros/edição/exclusão lógica implementados
     ordersModule.ts
     ordersController.ts
     ordersUseCases.ts
@@ -16,22 +18,25 @@ backend/
     ordersRepositoryInterface.ts
     orderModel.ts
     ordersTypes.ts
-    ordersDto.ts
-  src/features/auth/          Mesma convenção de responsabilidades
-  src/shared/cache/          cacheInterface.ts e fileCacheAdapter.ts
-  src/shared/config/         Leitura e validação da configuração
-  src/shared/                Infraestrutura realmente compartilhada
-  test/integration/
+    createOrderDto.ts
+    updateOrderDto.ts
+    listOrdersDto.ts
+  src/features/auth/           Login/JWT implementados
+  src/shared/cache/            Interface e adapter local em arquivos
+  src/shared/config/           appConfig.ts implementado
+  src/shared/database/         DatabaseModule e PrismaService implementados
+  src/shared/http/             filtro de erros sanitizado implementado
+  test/integration/            Integração HTTP, PostgreSQL, Compose e réplica reais
 database/
-  prisma/schema.prisma       Fonte única do schema futuro
+  prisma/schema.prisma       Mapeamento Prisma implementado
   prisma/migrations/         Histórico SQL versionado implementado
   seeds/                     Seed fictício de pedido implementado
   compose.yml                PostgreSQL local implementado
-scripts/                     Validações de CI implementadas; automação de ambiente futura
+scripts/                     Validações de CI implementadas; automação de ambiente e worktrees implementada
 docs/                        Documentação existente
 ```
 
-Scripts, migration SQL inicial, seed e Compose do banco estão implementados. A estrutura de aplicação e `schema.prisma` permanecem futuros. O executor nativo e a integração futura com Prisma seguem a decisão do [documento 15](15-postgresql-operacoes.md).
+Scripts, migrations SQL, seed de pedido, Compose do banco e schema Prisma estão implementados. O Prisma 7 gera o client no build e usa adapter PostgreSQL com limite de dez conexões e timeout de conexão de cinco segundos. O executor nativo SQL permanece o único executor de migrations; não gerar nem aplicar migrations pelo Prisma Migrate. Ver [decisão e limites](15-postgresql-operacoes.md).
 
 Nomenclatura confirmada: nome da feature concatenado à responsabilidade em camelCase (primeira palavra minúscula e palavras seguintes com inicial maiúscula), sem ponto, hífen ou underscore entre eles. Apenas a extensão mantém o ponto. Para `auth`: `authController.ts`, `authSevice.ts`, `authUseCases.ts`, `authRepository.ts` e `authModel.ts`. A grafia `sevice` segue literalmente o exemplo solicitado pelo usuário e é o sufixo adotado para services.
 
@@ -56,7 +61,7 @@ Manter nomes claros, funções focadas, regras em uma única fonte e mapeamentos
 
 ## Bootstrap, configuração e main
 
-`backend/src/main.ts` é o ponto de entrada: carregar/validar configuração, criar aplicação, aplicar pipes globais, configuração de erros HTTP, CORS, logging seguro, shutdown hooks e iniciar servidor. Módulos registram adapters e casos de uso por injeção. Não concentrar regras de negócio, consultas ou credenciais em `main.ts`.
+`backend/src/main.ts` é o ponto de entrada implementado: carregar/validar `API_PORT`, banco e configuração JWT, criar aplicação, excluir prontidão do prefixo `/api/v1`, registrar shutdown hooks e iniciar em `0.0.0.0`. `/health/ready` consulta o primário e responde 503 sem expor detalhes em caso de falha. Pipes globais estritos, envelope HTTP de erro sanitizado e log estruturado sem payloads estão implementados. CORS permite origens explícitas em `CORS_ORIGINS`; logging estruturado de requisições e métricas HTTP estão implementados.
 
 “Main” aqui identifica o bootstrap da aplicação. O fluxo de branches continua `develop → master`; não renomear a branch de produção sem nova instrução.
 
@@ -78,13 +83,15 @@ Na camada HTTP, usar `BadRequestException`, `UnauthorizedException`, `ForbiddenE
 
 ## Cache em arquivos
 
-Contrato assíncrono `CacheInterface`: leitura, escrita com TTL, remoção e invalidação de namespace. Adapter inicial `fileCacheAdapter.ts` usa filesystem, isolado atrás da interface e configurado por injeção. Docker Compose monta volume dedicado em `CACHE_DIRECTORY`; não há Redis. Cache é descartável e a fonte de verdade continua sendo o banco.
+Contrato assíncrono `CacheInterface`: leitura, escrita com TTL, remoção e invalidação de namespace. Adapter inicial `fileCacheAdapter.ts` usa filesystem, isolado atrás da interface e configurado por injeção. Listagens autenticadas de pedidos usam o adapter com TTL de 60 segundos; o Compose local monta volume dedicado em `CACHE_DIRECTORY`. Cache é descartável e a fonte de verdade continua sendo o banco.
 
-Proposta de uso inicial: consultas de pedidos autenticadas, com chave derivada de namespace, versão dos dados, filtros/paginação normalizados e contexto de autorização. Nunca cachear JWT, senha, credenciais ou respostas 401/403. Valores contêm apenas DTOs públicos. Limitar TTL, tamanho por entrada, ocupação total e concorrência; arquivos com permissões restritas, nomes derivados por hash sem entrada de usuário em caminhos, escrita temporária seguida de rename atômico no mesmo volume e limpeza assíncrona limitada. Arquivo expirado/corrompido ou cache indisponível resulta em miss e consulta ao banco; não ocultar erros do banco.
+Uso implementado: listagens de pedidos autenticadas, com chave derivada do namespace e dos filtros/paginação normalizados. A versão não entra no nome do arquivo: o valor guarda a versão do snapshot e a leitura só aceita esse valor se a versão do primário for a mesma antes e depois de abrir o arquivo. Assim uma versão nova reutiliza o arquivo em vez de acumular entradas antigas. Nunca cachear JWT, senha, credenciais ou respostas 401/403. Valores contêm apenas dados públicos da listagem. Limitar TTL, tamanho por entrada, ocupação total e concorrência; arquivos com permissões restritas, nomes derivados por hash sem entrada de usuário em caminhos, escrita temporária seguida de rename atômico no mesmo volume. A ocupação é reconciliada uma vez por processo e atualizada nas gravações e remoções; cada gravação remove no máximo 256 outros arquivos para caber na cota. Ausência do arquivo não gera nova remoção. Arquivo expirado, corrompido ou cache indisponível resulta em miss e consulta ao banco; não ocultar erros do banco.
 
-Para consistência entre instâncias, proposta: tabela `cache_versions` no primário, com `namespace` como PK textual e `version` inteira. Escritas de pedidos incrementam a versão na mesma transação; cada leitura consulta a versão atual do primário antes de acessar cache. Em miss, capturar versão e dados no mesmo snapshot consistente do primário; gravar sob essa versão. Assim uma alteração/soft delete torna entradas antigas inalcançáveis em todas as instâncias, mesmo se a gravação de cache falhar. O custo de consultar a versão permanece e deve ser medido. Não usar dados da réplica para preencher cache sem a garantia de visibilidade descrita abaixo.
+Leituras simultâneas da mesma versão e dos mesmos filtros compartilham uma consulta ao primário, com limite de 64 consultas em andamento. Versões diferentes não compartilham resultado.
 
-Volumes de cache locais por instância no perfil escalado, com a mesma política de versionamento; não depender de locks entre hosts ou volume de filesystem compartilhado para consistência. O cache não armazena sessão nem contadores de segurança. Limitação distribuída de login usa adapter próprio, com proposta de contadores atômicos no primário, sem Redis.
+Para consistência entre instâncias, a implementação usa a tabela `cache_versions` no primário, com `namespace` como PK textual e `version` inteira. Escritas de pedidos incrementam a versão na mesma transação. Cada leitura de cache consulta a versão atual do primário. Em miss, a página, o total e a versão saem do mesmo snapshot `RepeatableRead`; a entrada só é gravada se essa versão ainda é a observada antes da consulta. Uma alteração ou soft delete torna o valor antigo inalcançável em todas as instâncias, mesmo se a gravação de cache falhar. O custo de consultar a versão permanece. Não usar dados da réplica para preencher cache sem a garantia de visibilidade descrita abaixo.
+
+Volumes de cache locais por instância no perfil escalado, com a mesma política de versionamento; não depender de locks entre hosts ou volume de filesystem compartilhado para consistência. O cache não armazena sessão nem contadores de segurança. Limitação distribuída de login usa adapter próprio, com contadores atômicos no primário, sem Redis.
 
 ## Modelo relacional inicial
 
@@ -101,7 +108,7 @@ Normalização proposta até 3FN: itens em linhas próprias, atributos atômicos
 
 Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC. Valores monetários são decimais no banco e strings decimais na API para evitar perda de precisão. FKs mantêm integridade; a exclusão da aplicação é lógica, sem cascata de remoção física.
 
-Índices propostos: unicidade de `number` e `public_id`, índices de pedidos ativos por previsão e status, e índice em `order_items.order_id`. Avaliar índices compostos com consultas reais antes de adicioná-los.
+Índices: unicidade de `number` e `public_id`; ativos por previsão (`orders_active_delivery_date_idx`) e por status (`orders_active_status_idx`); itens por pedido. A listagem ordena por `created_at DESC, id DESC` somente entre ativos. A migration `20261018000100_orders_list_indexes` acrescenta `orders_active_created_idx` e `orders_active_status_created_idx`, parciais em `deleted_at IS NULL`, depois da medição da tarefa 016. O número do pedido é único: a listagem filtrada por número deriva `total` 0 ou 1 da própria busca, também nas páginas posteriores à primeira. Contagens amplas continuam exatas e separadas.
 
 ## Identificadores — decisão confirmada
 
@@ -113,9 +120,12 @@ Datas de entrega usam `date`; timestamps usam `timestamptz`, serializados em UTC
 
 ## Escalabilidade da API e replicação
 
+Infraestrutura adicionada: Nginx com HTTPS, réplicas de backend no Docker Swarm e permissões PostgreSQL. Consulte [infraestrutura e acessos](16-infraestrutura-e-acessos.md). O bootstrap, login, rotas de pedidos e cache local de listagens existem; métricas e integração HTTP real estão implementadas.
+
+
 Objetivo confirmado: suportar mais conexões e requisições concorrentes. Desenho proposto: balanceador → múltiplas instâncias stateless da API → pools de conexões → PostgreSQL primário e réplica de leitura. As instâncias compartilham configuração JWT e banco; sessões não dependem da memória de uma instância específica. Limitação de login deve usar estado compartilhado quando houver múltiplas instâncias.
 
-Replicação física assíncrona por streaming é a proposta para o PostgreSQL. Escritas, transações, autenticação e leituras que exigem consistência imediata usam o primário. Réplicas hot standby atendem somente leituras elegíveis e podem apresentar atraso. [Referência PostgreSQL](https://www.postgresql.org/docs/current/warm-standby.html).
+Replicação física assíncrona por streaming está implementada em perfil Compose isolado; [operação e evidências](17-replicacao.md). A stack Swarm conserva PostgreSQL único. Escritas, transações, autenticação e leituras que exigem consistência imediata usam o primário. Réplicas hot standby atendem somente leituras elegíveis e podem apresentar atraso. [Referência PostgreSQL](https://www.postgresql.org/docs/current/warm-standby.html).
 
 Para preservar o contrato de criação/edição/exclusão, consultas de pedidos usam o primário por padrão. Habilitar leitura na réplica por operação somente quando existir mecanismo que garanta a visibilidade das escritas necessárias (por exemplo, aguardar replay do WAL correspondente, com timeout e fallback). Até existir essa garantia, não direcionar listagem ou detalhe à réplica. Monitorar lag e retirar réplica indisponível/atrasada do roteamento; fallback ao primário deve respeitar seu limite de capacidade.
 
@@ -123,8 +133,12 @@ Pool por processo com limites explícitos e timeouts; considerar pooler compatí
 
 Migrations e seed são executados uma única vez no primário e propagados pelo banco. Configurar usuário de replicação dedicado, redes internas, volumes distintos e monitoramento de conexões, fila, timeouts e lag. Réplica não substitui backup. Não prometer failover automático nesta proposta; promoção e reconexão exigem procedimento operacional e prevenção de dois primários.
 
-Número de instâncias, tamanho de pools, carga esperada, limite de lag, política de failover e RPO/RTO seguem pendentes de dimensionamento. A validação funcional do perfil escalado pertence às suítes existentes de integração do backend, sem nova categoria de testes.
+A configuração inicial define duas instâncias no Swarm e pool de dez conexões por processo. Dimensionamento de produção, carga esperada, limite de lag, política de failover e RPO/RTO seguem pendentes. A validação funcional do perfil escalado pertence às suítes existentes de integração do backend, sem nova categoria de testes.
 
 ## Ambientes
 
 Bancos separados para desenvolvimento, integração e demonstração. Credenciais e nomes devem impedir que scripts de teste ou seed atinjam produção. Migrations e seed pertencem ao banco; integração com Prisma pertence ao backend. O perfil escalado e os scripts de replicação estão em `07-scripts-e-ambiente.md`.
+
+## Configuração concreta do adapter
+
+Prisma 7 usa `@prisma/adapter-pg`: pool máximo de dez conexões por processo, aquisição em cinco segundos, statement timeout de dez segundos e lock timeout de cinco segundos. Os parâmetros são fornecidos ao driver; parâmetros legados de URL não controlam o pool do adapter. [Documentação Prisma](https://docs.prisma.io/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool). `TRUST_PROXY=false` é o padrão local; a stack interna usa true atrás de um salto Nginx. CORS só permite origens explícitas em `CORS_ORIGINS`; lista vazia não habilita acesso de navegador entre origens. `CACHE_DRIVER=file|disabled` troca o binding sem modificar os casos de uso.

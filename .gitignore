@@ -1,7 +1,11 @@
+# Instruções locais de agentes em qualquer diretório
+AGENTS.md
+
 # Dependências e arquivos gerados (Node.js / TypeScript)
 node_modules/
 dist/
 build/
+backend/src/generated/
 coverage/
 .nyc_output/
 *.tsbuildinfo

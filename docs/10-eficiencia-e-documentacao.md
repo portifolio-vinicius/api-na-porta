@@ -5,13 +5,11 @@ Implementação parcial: plano conservador, checks documentais e agregação de 
 ## Fluxo coordenado
 
 ```text
-Solicitação → orchestrator → análise do diff e dependências
-  → tarefa pequena com aceite e contexto mínimo
-  → execução em branch/worktree isolado
-  → scripts de qualidade, segurança e integração
-  → métricas das rotas coletadas na mesma integração
-  → geração determinística dos relatórios e validação documental
-  → revisão do diff pelo orchestrator → PR → gates → develop
+Solicitações → orchestrator → tarefas com aceite/arquivos
+  → um worktree por funcionalidade, baseado em develop
+  → ativa em paralelo as tarefas com arquivos distintos → implementa → valida
+  → PRs e gates → merge em develop → sincroniza as branches que ainda dependem dessa base
+  → promove develop para master
 ```
 
 O protocolo de branches permanece no documento 06 e os gates no 09. Este documento adiciona a seleção de trabalho e a atualização documental; não cria um segundo fluxo de merge.
@@ -34,7 +32,7 @@ Segurança mínima, qualidade e integração mínima do documento 08 continuam o
 
 - Uma tarefa possui objetivo, critério de aceite, responsável, arquivos autorizados, dependências e comando de validação. Evitar delegar novamente uma investigação já concluída.
 - Ler primeiro índice, instruções aplicáveis, diff e trechos relevantes via busca; ampliar contexto somente quando uma dependência exigir. Não enviar o repositório ou histórico completo por padrão.
-- Separar tarefas independentes apenas quando houver benefício; cada agente recebe um resumo específico. Trabalho paralelo tem custo agregado e não garante economia de tokens.
+- Implementar funcionalidades independentes ao mesmo tempo, cada uma em um worktree, quando os arquivos sob responsabilidade não se sobrepõem. Não delegar duas alterações concorrentes no mesmo arquivo.
 - Reutilizar resultados com referência ao commit, arquivos e hash de entrada. Invalidar resumo/decisão se sua fonte mudou; não reutilizar resultado desatualizado para aprovar código.
 - Scripts fazem inventário, validação, cálculos, tabelas e geração de relatórios. Modelo atua em ambiguidade, decisões, implementação e revisão semântica, somente no escopo autorizado.
 - Saídas para o agente são curtas: arquivos afetados, resultado, erros e caminho do relatório. Logs completos ficam em artefatos; em falha, ler trecho causal antes de ampliar. Não truncar informação necessária para corrigir a falha.
