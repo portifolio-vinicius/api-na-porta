@@ -22,6 +22,7 @@ infraCheck:
 pipelineCheck:
 	@python3 scripts/ci/validate.py
 help:
+	@printf '%s\n' 'apiVolume LOAD_ORDERS=100000 LOAD_STAGES=1,10,25,50,100 LOAD_SECONDS=15 LOAD_INSTANCES=2 [LOAD_CACHE=file|disabled]'
 	@printf '%s\n' 'seedIntegration; seed SEED_PROFILE=basic|full; composeIntegration; replicaInit replicaStatus replicaDown replicaIntegration; REPLICATION_PASSWORD no ambiente privado'
 	@printf '%s\n' 'infraCheck infraValidate swarmDeploy scale dbAccess' 'API_REPLICAS=2; STACK_NAME=naporta; DB_ACCESS_ACTION=roles|grants; DB_CONTAINER=<container>'
 	@printf '%s\n' 'up down logs SERVICE=api|db; ENV=local|demo PGHOST PGPORT PGUSER=postgres PGPASSWORD PGDATABASE APP_PASSWORD MIGRATOR_PASSWORD API_DATABASE_URL MIGRATOR_API_URL JWT_SECRET JWT_ISSUER JWT_AUDIENCE DEMO_USER_EMAIL DEMO_USER_PASSWORD'
@@ -99,3 +100,8 @@ composeIntegration:
 .PHONY: seedIntegration
 seedIntegration:
 	@python3 backend/test/integration/demoSeed.py
+
+export LOAD_ORDERS LOAD_SECONDS LOAD_WARMUP_SECONDS LOAD_STAGES LOAD_INSTANCES LOAD_MAX_REQUESTS LOAD_OUTPUT LOAD_CACHE
+.PHONY: apiVolume
+apiVolume:
+	@bash scripts/test/api-volume.sh

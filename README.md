@@ -178,3 +178,7 @@ As decisões e evidências completas permanecem em [escopo e premissas](docs/01-
 | Migrations, backup, restauração e rollback | [Operações PostgreSQL](docs/15-postgresql-operacoes.md) |
 | HTTPS, múltiplas instâncias e réplica | [Infraestrutura](docs/16-infraestrutura-e-acessos.md) · [Replicação](docs/17-replicacao.md) |
 | Histórico detalhado | [Registros de tarefas](docs/tasks) · [Índice completo](docs/README.md) |
+
+## Teste opcional de alto volume
+
+`make apiVolume` cria ambiente descartável e mede a API com 100 mil pedidos fictícios, duas instâncias e concorrência 1/10/25/50/100. Resultados, limites e opções em [volume da API](docs/18-volume-api.md). A [execução revisada](docs/performance/volume-014.md) aprovou 17.854 requisições medidas sem erros; os números são locais e não estabelecem SLA produtivo.

@@ -14,7 +14,8 @@
     "build": "prisma generate --schema ../database/prisma/schema.prisma && tsc -p tsconfig.build.json",
     "seed:demo-user": "npm run build && node dist/seedDemoUser.js",
     "start": "node dist/main.js",
-    "test:integration": "npm run build && node test/integration/httpIntegration.mjs"
+    "test:integration": "npm run build && node test/integration/httpIntegration.mjs",
+    "test:volume": "node test/volume/apiVolume.mjs"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",
