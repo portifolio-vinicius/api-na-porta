@@ -31,3 +31,7 @@ LOAD_ORDERS: 100..1000000; LOAD_STAGES: até dez valores entre 1..200; LOAD_SECO
 Artefatos: report.json com ambiente/configuração/auditorias/recursos e métricas por cenário; report.md com tabela resumida; samples.jsonl com latência cliente/servidor, status e bytes de corpo, sem corpos, tokens, IDs de pedidos ou dados de clientes. Falhas preservam relatório incompleto. Campos indisponíveis usam null. Código de saída não zero para erro de preparação, limite atingido, resposta inesperada, timeout, coleta incompleta ou falha de limpeza.
 
 Não há SLA aprovado; o relatório não transforma uma execução local em garantia produtiva. Comparações exigem o mesmo ambiente, dados, mistura e configuração. Resultados reais ficam registrados na [tarefa 014](tasks/014.md) e na [baseline descritiva](performance/volume-014.md). Réplicas e recuperação continuam no documento 17.
+
+## Compatibilidade e regressões
+
+O runner valida envelopes `Messages` (code/message/data/requestId e correlação no cabeçalho) antes de verificar login e pedidos. Os bytes medidos incluem o envelope completo; 204 permanece vazio. A integração funcional cobre erro concorrente de listagem no banco real e recuperação sem encerrar o processo. Auditoria dos worktrees, ciclos TDD e repetição de 100 mil pedidos na base atual estão na [tarefa 021](tasks/021.md).
